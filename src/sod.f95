@@ -1,6 +1,8 @@
 module sod_init
 use globalconstants
-use geom
+use geom_data
+use mesh_data
+use core_input
 implicit none
 
 !        .. vectors ..
@@ -44,7 +46,7 @@ READ(212,NML=inp)
 WRITE(*,NML=inp)
 
 ! Set nreg
-nreg = maxreg
+nreg = 1
 
 ! **************************
 ! ALLOCATE  ARRAYS         *
@@ -214,5 +216,64 @@ END DO
 !need boundary arrays
 RETURN
 END SUBROUTINE geomcalc
+
+
+SUBROUTINE init()
+!enter initial test problem configuration here
+IMPLICIT NONE
+REAL (KIND=DP)::   xbubble, ybubble
+! SOD problem
+pre=zero
+rho=zero
+uv=zero
+vv=zero
+! SOD circle quarter
+pre=one/ten
+rho=one/eight
+uv=zero
+vv=zero
+Do iel=1,nel
+    xbubble=xv(nodelist(1,iel))+xv(nodelist(2,iel))  &
+            +xv(nodelist(3,iel))+xv(nodelist(4,iel))
+    xbubble=xbubble/four
+    ybubble=yv(nodelist(1,iel))+yv(nodelist(2,iel))  &
+            +yv(nodelist(3,iel))+yv(nodelist(4,iel))
+    ybubble=ybubble/four
+    If ((xbubble)**2+(ybubble)**2 <= ((0.4_DP*(yf(1)-yo(1)))**2)+0.0000001_DP) then
+        rho(iel)=one
+        pre(iel)=one
+    END IF
+END DO
+
+divint=zero
+divvel=zero
+en=zero
+cc=zero
+qq=zero
+massel=zero
+volel=zero
+volelold=zero
+area=zero
+
+!=====initialise prdcor var
+pre05=zero
+rho05=zero
+en05=zero
+volel05=zero
+xv05=zero
+yv05=zero
+uvold=zero
+vvold=zero
+uvbar=zero
+vvbar=zero
+
+!=initialise fem
+elwtc=zero
+nint=zero
+dndx=zero
+dndy=zero
+RETURN
+END SUBROUTINE init
+
 
 end module

@@ -7,7 +7,7 @@ MODULE GRAPHICS
 ! Solution quantities advected using the ideas
 ! of Van Leer and Benson
 USE GLOBALCONSTANTS
-USE GEOM
+USE geom_data
 use write_tio
 USE LAGSTEP
 

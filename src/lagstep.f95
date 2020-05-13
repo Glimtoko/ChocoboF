@@ -1,91 +1,17 @@
-
 MODULE LAGSTEP
 USE GlobalConstants
-USE GEOM
-! USE CONNECTARRAYS
-
+USE geom_data
+use mesh_data
+use cutoffs
+use core_input
 
 
 IMPLICIT NONE
-
-!        .. vectors ..
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::pre(:) !element pressures
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::rho(:)!element density
-REAL (KIND=DP), PUBLIC, POINTER ::en(:)!element energy
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::cc(:) !element sound speed
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::qq(:) !element artificial viscosity
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::massel(:) !element mass
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::volel(:) !element volume
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::volelold(:) !element old vol
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::area(:) !element area
-REAL (KIND=DP),DIMENSION(:),PUBLIC, POINTER ::uv !node x velocity
-REAL (KIND=DP),DIMENSION(:),PUBLIC, POINTER ::vv!node y velocity
-
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::uvold(:) !old x velocity
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::vvold(:) !old y velocity
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::uvbar(:) !av x velocity
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::vvbar(:) !av y velocity
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::xv05(:) !1/2dt node x
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::yv05(:) !1/2dt node y
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::pre05(:) !1/2dt pressures
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::rho05(:) !1/2dt density
-REAL (KIND=DP), PUBLIC, POINTER ::en05(:)!1/2dt energy
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::volel05(:) !1/2dt volume
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::divint(:) !int divergence v
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::divvel(:) !int divergence v
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::dxtb(:),dxlr(:)
-REAL (KIND=DP), PUBLIC,ALLOCATABLE ::dudxt(:),dudxb(:),dudxl(:),dudxr(:)
-REAL (KIND=DP), PUBLIC,ALLOCATABLE ::phib(:), phit(:), phil(:), phir(:)
-! used in momentum and hourgl
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::forcenodx(:) !force mass x
-REAL (KIND=DP), PUBLIC, ALLOCATABLE ::forcenody(:) !force mass y
-
-!fem
-REAL (KIND=DP), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::nint(:,:)
-REAL (KIND=DP), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::elwtc(:,:)
-REAL (KIND=DP), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::dndx(:,:)
-REAL (KIND=DP), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::dndy(:,:)
-REAL (KIND=DP), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::pdndx(:,:)
-REAL (KIND=DP), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::pdndy(:,:)
-! cut off parameters
-REAL(KIND=DP), PUBLIC, PARAMETER :: mindt=1.00000000000e-4
-REAL(KIND=DP), PUBLIC, PARAMETER ::  zcut=1.00000000000e-8
-REAL(KIND=DP), PUBLIC, PARAMETER :: dtminhg=0.000000008
-REAL(KIND=DP), PUBLIC, PARAMETER ::  zerocut=1.0000000e-18
-! stop divide by 0's
-REAL(KIND=DP), PUBLIC, PARAMETER :: dencut=1.000000000e-6
-! namelist tinp
-! ideal gas gamma
-REAL(KIND=DP), PUBLIC:: gamma
-! artificial viscosity
-REAL(KIND=DP), PUBLIC:: cq
-REAL(KIND=DP), PUBLIC:: cl
-!max time step
-REAL(KIND=DP), PUBLIC:: maxallstep
-! initial time step
-REAL(KIND=DP), PUBLIC:: dtinit
-INTEGER, PUBLIC :: dtoption ! timestep option
-! time step groth factor
-REAL(KIND=DP), PUBLIC :: t0  !initial time
-REAL(KIND=DP), PUBLIC :: tf  !final time
-REAL(KIND=DP), PUBLIC :: growth
-! if 0 cartesian 1 axisymmetric
-INTEGER, PUBLIC :: zaxis
-INTEGER, PUBLIC :: zintdivvol   ! 0 not vol 1 indiv volume change
-INTEGER, PUBLIC :: avtype ! type of artificial viscosity
-INTEGER, PUBLIC :: zantihg  ! if 0 no hourglassing if 1 hourglassing
-INTEGER, PUBLIC :: hgregtyp(1:maxreg)
-REAL(KIND=DP), PUBLIC :: kappareg(1:maxreg)
-!!!!!!!!!!!!!!end namelist tinp
-
-REAL(KIND=DP), PUBLIC :: dt  !time step size
-INTEGER, PUBLIC :: dtcontrol
-REAL(KIND=DP), PUBLIC :: time  !time
+! INTEGER, PUBLIC :: dtcontrol
+ !time
 
 REAL(KIND=DP), PUBLIC :: a1,a2,a3,b1,b2,b3
-INTEGER, PUBLIC      ::prout, stepno
 ! total energy test
-REAL(KIND=DP), PUBLIC :: totalenergy,totalke,totalie
 
 CONTAINS
 !===============================================
@@ -103,74 +29,8 @@ ALLOCATE (xv05(1:nnod),yv05(1:nnod))
 ALLOCATE (nint(1:4,1:nel),dndx(1:4,1:nel),dndy(1:4,1:nel))
 ALLOCATE (elwtc(1:4,1:nel))
 ALLOCATE (pdndx(1:4,1:nel),pdndy(1:4,1:nel))
-
-
-! ALLOCATE (dxtb(1:nel),dxlr(1:nel))
-! ALLOCATE (dudxb(1:nel),dudxt(1:nel),dudxl(1:nel),dudxr(1:nel))
-! ALLOCATE (phib(1:nel),phit(1:nel),phil(1:nel),phir(1:nel))
 RETURN
 END SUBROUTINE declare
-
-!========================================================
-SUBROUTINE init()
-!enter initial test problem configuration here
-use sod_init
-IMPLICIT NONE
-REAL (KIND=DP)::   xbubble, ybubble
-! SOD problem
-pre=zero
-rho=zero
-uv=zero
-vv=zero
-! SOD circle quarter
-pre=one/ten
-rho=one/eight
-uv=zero
-vv=zero
-Do iel=1,nel
-    xbubble=xv(nodelist(1,iel))+xv(nodelist(2,iel))  &
-            +xv(nodelist(3,iel))+xv(nodelist(4,iel))
-    xbubble=xbubble/four
-    ybubble=yv(nodelist(1,iel))+yv(nodelist(2,iel))  &
-            +yv(nodelist(3,iel))+yv(nodelist(4,iel))
-    ybubble=ybubble/four
-    If ((xbubble)**2+(ybubble)**2 <= ((0.4_DP*(yf(1)-yo(1)))**2)+0.0000001_DP) then
-        rho(iel)=one
-        pre(iel)=one
-    END IF
-END DO
-
-divint=zero
-divvel=zero
-en=zero
-cc=zero
-qq=zero
-massel=zero
-volel=zero
-volelold=zero
-area=zero
-
-!=====initialise prdcor var
-pre05=zero
-rho05=zero
-en05=zero
-volel05=zero
-xv05=zero
-yv05=zero
-uvold=zero
-vvold=zero
-uvbar=zero
-vvbar=zero
-
-!=initialise fem
-elwtc=zero
-nint=zero
-dndx=zero
-dndy=zero
-RETURN
-END SUBROUTINE init
-
-
 
 !=======================================================
 SUBROUTINE volcalc(x,y,vol,area)

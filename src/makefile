@@ -3,8 +3,8 @@ FFLAGS = -O3
 
 
 all_objects =  \
-	geom.o \
 	globalconstants.o \
+	data.o \
 	graphics.o \
 	lagstep.o \
 	write_tio.o \
@@ -23,26 +23,25 @@ RPATH = -Wl,-rpath $(PROD)/hdf5/lib
 .f95.o:
 	$(FC) $(FFLAGS) $(INCLUDES) $< -c
 
-gascode: $(all_objects)
-	$(FC) $(FFLAGS) $(all_objects) $(LINKS) $(RPATH) -o gascode
+chocobof: $(all_objects)
+	$(FC) $(FFLAGS) $(all_objects) $(LINKS) $(RPATH) -o chocobof
 
 clean:
-	rm gascode
+	rm chocobof
 	rm *.o
 	rm *.mod
 
-prog.o: globalconstants.o geom.o sod.o lagstep.o graphics.o
+prog.o: data.o globalconstants.o  sod.o lagstep.o graphics.o
 
-lagstep.o: globalconstants.o geom.o sod.o
+lagstep.o: data.o globalconstants.o  sod.o
 
-graphics.o: globalconstants.o geom.o lagstep.o write_tio.o write_silo.o
+graphics.o: data.o globalconstants.o  lagstep.o write_tio.o write_silo.o
 
-geom.o: globalconstants.o
 
-sod.o: globalconstants.o geom.o
+sod.o: data.o globalconstants.o
 
 globalconstants.o: globalconstants.f95
 
-write_tio.o: lagstep.o geom.o
+write_tio.o: data.o lagstep.o
 
-write_silo.o: lagstep.o geom.o
+write_silo.o: data.o lagstep.o

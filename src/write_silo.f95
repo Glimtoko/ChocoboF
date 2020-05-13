@@ -1,6 +1,7 @@
 module write_silo
 use lagstep
-use geom
+use mesh_data
+use geom_data
 
 implicit none
 

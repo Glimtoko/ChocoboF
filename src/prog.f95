@@ -1,24 +1,29 @@
 !===================================================================
-PROGRAM Geommesh
+PROGRAM ChocoboF
 
 !This is the program for the mesh
 
 USE GLOBALCONSTANTS
-USE GEOM
+USE geom_data
 use sod_init
 USE LAGSTEP
+use mesh_data
+use core_input
 USE GRAPHICS
 use write_silo
 use write_tio
 
 IMPLICIT NONE
 REAL     :: ctime0, ctime
-real(kind=dp) :: dtsilo, lastsilo
-INTEGER:: nadvect, stepcnt, h5type
-NAMELIST /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
-        zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type,tioonefile
+! real(kind=dp) :: dtsilo, lastsilo
+! INTEGER:: nadvect, stepcnt, h5type
+! INTEGER:: nadvect
+! NAMELIST /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
+!         zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type,tioonefile
 
 REAL(KIND=DP)     :: halfstep
+REAL(KIND=DP) :: totalenergy,totalke,totalie
+INTEGER :: dtcontrol
 nadvect=0
 stepcnt = 0
 
@@ -49,6 +54,7 @@ CALL masscalc()
 Do iel=1,nel
     en(iel)=pre(iel)/((gamma-one)*rho(iel))
 END DO
+
 CALL totalen(en,rho,uv,vv,totalenergy,totalke,totalie)
 
 ! ====== Time Zero Dump ======
@@ -80,7 +86,7 @@ DO WHILE (time.LE.tf)
     CALL artificialviscosity(rho,cc,divvel,qq)
 
     ! calculate stable timestep
-    CALL stabletimestep()
+    CALL stabletimestep(dtcontrol)
     time=time+dt
 
     WRITE(*,"(i4, 2x, f10.7, 2x, f15.12, 2x, i4)") stepno,time,dt, dtcontrol
@@ -165,15 +171,17 @@ WRITE (*, *) ' CPU TIME ' , ctime - ctime0, 'seconds'
 
 
 
-END PROGRAM Geommesh
+END PROGRAM ChocoboF
 
-SUBROUTINE stabletimestep()
+SUBROUTINE stabletimestep(dtcontrol)
 USE GLOBALCONSTANTS
-USE GEOM
+USE geom_data
 USE LAGSTEP
 IMPLICIT NONE
 
+integer, intent(out) :: dtcontrol
 REAL (KIND=DP)::dtmin,deltat(1:nel),dtold
+
 
 dtmin=one
 dtold=dt

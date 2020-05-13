@@ -1,12 +1,12 @@
 module write_tio
-use lagstep
-use geom
+use mesh_data
+use geom_data
+use core_input
 
 use typhonio
 implicit none
 
 integer, save :: tio_count = 0
-logical :: tioonefile
 
 contains
 subroutine write_tio_file(state, name)
