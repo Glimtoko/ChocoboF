@@ -1,5 +1,5 @@
 FC = gfortran
-FFLAGS = -O3
+FFLAGS = -O3 -Wunused
 
 
 all_objects =  \
@@ -7,6 +7,7 @@ all_objects =  \
 	data.o \
 	graphics.o \
 	lagstep.o \
+	lagstep_fi.o \
 	write_tio.o \
 	write_silo.o \
 	sod.o \
@@ -31,9 +32,11 @@ clean:
 	rm *.o
 	rm *.mod
 
-prog.o: data.o globalconstants.o  sod.o lagstep.o graphics.o
+prog.o: data.o globalconstants.o  sod.o lagstep.o lagstep_fi.o graphics.o
 
 lagstep.o: data.o globalconstants.o  sod.o
+
+lagstep_fi.o: globalconstants.o
 
 graphics.o: data.o globalconstants.o  lagstep.o write_tio.o write_silo.o
 

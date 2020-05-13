@@ -7,6 +7,7 @@ USE GLOBALCONSTANTS
 USE geom_data
 use sod_init
 USE LAGSTEP
+use lagrangian_hydro
 use mesh_data
 use core_input
 USE GRAPHICS
@@ -21,7 +22,7 @@ REAL     :: ctime0, ctime
 ! NAMELIST /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
 !         zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type,tioonefile
 
-REAL(KIND=DP)     :: halfstep
+REAL(KIND=DP)     :: dt05
 REAL(KIND=DP) :: totalenergy,totalke,totalie
 INTEGER :: dtcontrol
 nadvect=0
@@ -72,43 +73,49 @@ dt=dtinit
 stepno = 1
 DO WHILE (time.LE.tf)
     !calculate the FEM elements
-    CALL femel(xv,yv,a1,a2,a3,b1,b2,b3,nint,dndx,dndy,pdndx,pdndy)
+    call calculate_finite_elements( &
+        xv, yv, nodelist, nel, nint, dndx, dndy, pdndx, pdndy, elwtc &
+    )
 
     !calc divergence of v
-    CALL divv(uv,vv, pdndx, pdndy,divvel)
-!     print *, nint(:,370)
-!     print *, pdndx(:,370)
+    call caluclate_div_v(uv, vv, pdndx, pdndy, nodelist, nel, divvel)
 
     !calculate element sound speed
-    CALL soundspeed()
+    call calculate_soundspeed(pre, rho, gamma, nel, cc)
 
     ! calc element artificial viscosity
-    CALL artificialviscosity(rho,cc,divvel,qq)
+    call calculate_q(rho, cc, divvel, area, cq, cl, nel, qq)
 
     ! calculate stable timestep
-    CALL stabletimestep(dtcontrol)
-    time=time+dt
-
+    call get_dt( &
+        rho, area, cc, qq, time, t0, dtinit,  &
+        maxallstep, growth, nel, dt, dtcontrol &
+    )
+    time = time + dt
     WRITE(*,"(i4, 2x, f10.7, 2x, f15.12, 2x, i4)") stepno,time,dt, dtcontrol
+
     !calculate 1/2 time step nodal positions
-    halfstep=half*dt
-    CALL accn(halfstep,xv,yv,uv,vv,xv05,yv05)
+    dt05 = half * dt
+    call move_nodes(dt05, xv, yv, uv, vv, nnod, xv05, yv05)
 
     !calculate the FEM elements
-    CALL femel(xv05,yv05,a1,a2,a3,b1,b2,b3,nint,dndx,dndy,pdndx,pdndy)
+    call calculate_finite_elements( &
+        xv05, yv05, nodelist, nel, nint, dndx, dndy, pdndx, pdndy, elwtc &
+    )
+
     ! calculate 1/2 time step volume
-    volelold=volel
-    CALL volcalc(xv05,yv05,volel05,area)
+    volelold = volel
+    call calculate_volume(xv05, yv05, nodelist, nel, volel05, area)
 
     ! calculate 1/2 time step density
-    CALL density(massel,volel05,rho05)
+    call calculate_density(massel, volel05, nel, rho05)
 
     !calc integral of divergence of v
-
-    CALL intdivv(halfstep,volel,volelold,uv,vv,dndx,dndy,divint)
+    call calculate_int_divv(zintdivvol, dt05, volel, volelold, uv, vv, dndx, dndy, nodelist, nel, divint)
 
     !calculate 1/2 time step energy
-    CALL energy(halfstep,pre,qq,massel,en, divint,en05)
+!     CALL energy(dt05,pre,qq,massel,en, divint,en05)
+    call calculate_energy(dt05, pre, qq, massel, en, divint, nel, en05)
 
     ! calculate 1/2 time step pressure using eos
     CALL eos(en05,rho05,pre05)
@@ -123,22 +130,25 @@ DO WHILE (time.LE.tf)
     vvbar=half*(vvold+vv)
 
     !calculate full time step nodal positions
-    CALL accn(dt,xv,yv,uvbar,vvbar,xv,yv)
+    call move_nodes(dt, xv, yv, uvbar, vvbar, nnod, xv, yv)
 
     !calculate the FEM elements
-    CALL femel(xv,yv,a1,a2,a3,b1,b2,b3,nint,dndx,dndy,pdndx,pdndy)
+    call calculate_finite_elements( &
+        xv, yv, nodelist, nel, nint, dndx, dndy, pdndx, pdndy, elwtc &
+    )
 
     ! calculate full time step volume
-    CALL volcalc(xv,yv,volel,area)
+    call calculate_volume(xv, yv, nodelist, nel, volel, area)
 
     ! calculate full time step density
-    CALL density(massel,volel,rho)
+    call calculate_density(massel, volel, nel, rho)
 
     !calculate div with ubar,vbar
-    CALL intdivv(dt,volel,volelold,uvbar,vvbar,dndx,dndy,divint)
+    call calculate_int_divv(zintdivvol, dt, volel, volelold, uvbar, vvbar, dndx, dndy, nodelist, nel, divint)
 
     !calculate full time step energy
-    CALL energy(dt,pre05,qq,massel,en,divint,en)
+!     CALL energy(dt,pre05,qq,massel,en,divint,en)
+    call calculate_energy(dt, pre05, qq, massel, en, divint, nel, en)
 
     ! calculate full time step pressure using eos
     CALL eos(en,rho,pre)
@@ -172,48 +182,48 @@ WRITE (*, *) ' CPU TIME ' , ctime - ctime0, 'seconds'
 
 
 END PROGRAM ChocoboF
-
-SUBROUTINE stabletimestep(dtcontrol)
-USE GLOBALCONSTANTS
-USE geom_data
-USE LAGSTEP
-IMPLICIT NONE
-
-integer, intent(out) :: dtcontrol
-REAL (KIND=DP)::dtmin,deltat(1:nel),dtold
-
-
-dtmin=one
-dtold=dt
-
-! print *, area(1)
-dtcontrol = 0
-if (dtoption == 1) then
-    do ireg=1,nreg
-!         do iel=maxel(ireg-1)+1, maxel(ireg)
-        do iel=1,nel
-            deltat(iel)=area(iel)/MAX(dencut,((cc(iel)**2)+two*(qq(iel)/rho(iel))))
-
-            deltat(iel)=(sqrt(deltat(iel)))/two
-            if (area(iel) < 0.0) print *, "Negative area in cell", iel, deltat(iel)
-            IF (deltat(iel).LT.dtmin) then
-                dtcontrol = iel
-                dtmin=deltat(iel)
-            END IF
-        end do
-    end do
-end if
-
-IF (time.EQ.t0) THEN
-    dt=MIN(dtmin, maxallstep, dtinit)
-ELSE
-    dt=MIN(dtmin, maxallstep, growth*dtold)
-    if (dt ==growth*dtold) dtcontrol = -1
-END IF
-IF ((time.GT.0.2500000000000_DP-dt).AND.(time.LT.0.2510050000)) THEN
-    dt= 0.25000000000000_DP-time
-END IF
-WRITE(21,*) time,dt,dtmin
-
-RETURN
-END SUBROUTINE stabletimestep
+!
+! SUBROUTINE stabletimestep(dtcontrol)
+! USE GLOBALCONSTANTS
+! USE geom_data
+! USE LAGSTEP
+! IMPLICIT NONE
+!
+! integer, intent(out) :: dtcontrol
+! REAL (KIND=DP)::dtmin,deltat(1:nel),dtold
+!
+!
+! dtmin=one
+! dtold=dt
+!
+! ! print *, area(1)
+! dtcontrol = 0
+! if (dtoption == 1) then
+!     do ireg=1,nreg
+! !         do iel=maxel(ireg-1)+1, maxel(ireg)
+!         do iel=1,nel
+!             deltat(iel)=area(iel)/MAX(dencut,((cc(iel)**2)+two*(qq(iel)/rho(iel))))
+!
+!             deltat(iel)=(sqrt(deltat(iel)))/two
+!             if (area(iel) < 0.0) print *, "Negative area in cell", iel, deltat(iel)
+!             IF (deltat(iel).LT.dtmin) then
+!                 dtcontrol = iel
+!                 dtmin=deltat(iel)
+!             END IF
+!         end do
+!     end do
+! end if
+!
+! IF (time.EQ.t0) THEN
+!     dt=MIN(dtmin, maxallstep, dtinit)
+! ELSE
+!     dt=MIN(dtmin, maxallstep, growth*dtold)
+!     if (dt ==growth*dtold) dtcontrol = -1
+! END IF
+! IF ((time.GT.0.2500000000000_DP-dt).AND.(time.LT.0.2510050000)) THEN
+!     dt= 0.25000000000000_DP-time
+! END IF
+! WRITE(21,*) time,dt,dtmin
+!
+! RETURN
+! END SUBROUTINE stabletimestep

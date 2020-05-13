@@ -35,7 +35,6 @@ CONTAINS
 SUBROUTINE output(stepcnt)
 IMPLICIT NONE
 integer :: stepcnt
-integer, save :: callcount = 0
 
 numbers="0123456789"
 filename="results/mypre_no"

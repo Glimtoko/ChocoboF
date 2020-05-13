@@ -10,7 +10,7 @@ IMPLICIT NONE
 ! INTEGER, PUBLIC :: dtcontrol
  !time
 
-REAL(KIND=DP), PUBLIC :: a1,a2,a3,b1,b2,b3
+! REAL(KIND=DP), PUBLIC :: a1,a2,a3,b1,b2,b3
 ! total energy test
 
 CONTAINS
@@ -38,6 +38,8 @@ SUBROUTINE volcalc(x,y,vol,area)
 IMPLICIT NONE
 REAL (KIND=DP), INTENT(IN)::  x(:),y(:)
 REAL (KIND=DP), INTENT(OUT):: vol(:),area(:)
+
+REAL(KIND=DP) :: a1,a2,a3,b1,b2,b3
 
 Do iel=1,nel
     a1=quarter*(-x(nodelist(1,iel))+x(nodelist(2,iel))   &
@@ -127,24 +129,7 @@ SUBROUTINE soundspeed()
 !calculate element sound speed
 ! ideal gas equation gamma is defined as parameter at init
 IMPLICIT NONE
-INTEGER :: jjjj
 Do iel=1,nel
-!     IF (rho(iel).LT.(0.0010000)) THEN
-!         write(*,*)'rho small iel, rho, pre', iel, rho(iel), pre(iel)
-!         Do jjjj=1,4
-!             write(*,*)'u,v', uv(nodelist(jjjj,iel)),vv(nodelist(jjjj,iel))
-!             write(*,*)'x,y', xv(nodelist(jjjj,iel)),yv(nodelist(jjjj,iel))
-!         END DO
-!     END IF
-!
-!     IF ((pre(iel).LT.(0.000000)).OR.(pre(iel).GT.(1000000.0))) THEN
-!         write(*,*)'rho small iel, rho, pre', iel, rho(iel), pre(iel)
-!         Do jjjj=1,4
-!             write(*,*)'u,v', uv(nodelist(jjjj,iel)),vv(nodelist(jjjj,iel))
-!             write(*,*)'x,y', xv(nodelist(jjjj,iel)),yv(nodelist(jjjj,iel))
-!         END DO
-!     END IF
-
     cc(iel)=sqrt(gamma*pre(iel)/rho(iel))
 END DO
 END SUBROUTINE soundspeed
@@ -166,14 +151,15 @@ END SUBROUTINE accn
 
 
 !=======================================================
-SUBROUTINE femel(x,y,a1,a2,a3,b1,b2,b3,ni,ndx,ndy,pndx, pndy)
+SUBROUTINE femel(x,y,ni,ndx,ndy,pndx, pndy)
 IMPLICIT NONE
 REAL (KIND=DP), INTENT(IN)::  x(:),y(:)
-REAL (KIND=DP), INTENT(OUT):: a1,a2,a3,b1,b2,b3
 REAL (KIND=DP), INTENT(OUT):: ni(:,:),ndx(:,:),ndy(:,:)
 REAL (KIND=DP), INTENT(OUT):: pndx(:,:),pndy(:,:)
 REAL (KIND=DP)             ::jacob
 INTEGER :: jjj
+
+REAL(KIND=DP) :: a1,a2,a3,b1,b2,b3
 
 Do iel=1,nel
     a1=quarter*(-x(nodelist(1,iel))+x(nodelist(2,iel))   &
@@ -292,6 +278,8 @@ REAL (KIND=DP), INTENT(IN)::den(:),step
 REAL (KIND=DP)  :: ugam,vgam,temp,biibii,xdiff,ydiff
 REAL (KIND=DP)  :: gam1,gam2,gam3,gam4,qx,qy, kap
 INTEGER         :: hgtyp
+
+REAL(KIND=DP) :: a1,a2,a3,b1,b2,b3
 
 ! DO ireg=1,nreg   ! loop regions
 
@@ -415,7 +403,6 @@ REAL (KIND=DP), ALLOCATABLE ::massnod(:) !node mass
 REAL (KIND=DP), ALLOCATABLE ::massj(:) !node mass el
 REAL (KIND=DP), ALLOCATABLE ::forcejx(:) !force mass el
 REAL (KIND=DP), ALLOCATABLE ::forcejy(:) !force mass el
-REAL (KIND=DP) :: temp
 
 ALLOCATE (massnod(1:nnod),massj(1:nnod), forcejx(1:nnod))
 ALLOCATE (forcejy(1:nnod))

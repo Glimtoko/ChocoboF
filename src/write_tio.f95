@@ -40,7 +40,6 @@ integer(kind=TIO_SIZEK) :: order, n1, n2, n3, n4, nchunks
 character(len=:), allocatable :: iunits, junits
 
 ! Arguments to TIO_Write_UnstrMesh_Chunk_f
-integer(kind=TIO_SIZEK) :: idx
 integer(kind=TIO_SHAPEK), dimension(1) :: shapes = [TIO_SHAPE_QUAD4_F]
 integer, dimension(1) :: ncells_per_shape
 integer, dimension(nnod) :: nodeIDs
