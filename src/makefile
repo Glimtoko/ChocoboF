@@ -5,7 +5,7 @@ FFLAGS = -O3 -Wunused
 all_objects =  \
 	memory_manipulation.o \
 	data.o \
-	graphics.o \
+	text_output.o \
 	lagstep_fi.o \
 	write_tio.o \
 	write_silo.o \
@@ -33,9 +33,9 @@ clean:
 
 
 # Dependencies
-prog.o: data.o memory_manipulation.o sod.o lagstep_fi.o graphics.o
+prog.o: data.o memory_manipulation.o sod.o lagstep_fi.o text_output.o
 
 sod.o: data.o	# For input and file unit
 
-graphics.o: write_tio.o write_silo.o
+text_output.o: write_tio.o write_silo.o
 
