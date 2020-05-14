@@ -6,7 +6,6 @@ all_objects =  \
 	globalconstants.o \
 	data.o \
 	graphics.o \
-	lagstep.o \
 	lagstep_fi.o \
 	write_tio.o \
 	write_silo.o \
@@ -28,23 +27,20 @@ chocobof: $(all_objects)
 	$(FC) $(FFLAGS) $(all_objects) $(LINKS) $(RPATH) -o chocobof
 
 clean:
-	rm chocobof
-	rm *.o
-	rm *.mod
+	-rm chocobof
+	-rm *.o
+	-rm *.mod
 
-prog.o: data.o globalconstants.o  sod.o lagstep.o lagstep_fi.o graphics.o
-
-lagstep.o: data.o globalconstants.o  sod.o
+prog.o: data.o globalconstants.o  sod.o lagstep_fi.o graphics.o
 
 lagstep_fi.o: globalconstants.o
 
-graphics.o: data.o globalconstants.o  lagstep.o write_tio.o write_silo.o
-
+graphics.o: data.o globalconstants.o write_tio.o write_silo.o
 
 sod.o: data.o globalconstants.o
 
 globalconstants.o: globalconstants.f95
 
-write_tio.o: data.o lagstep.o
+write_tio.o: data.o
 
-write_silo.o: data.o lagstep.o
+write_silo.o: data.o

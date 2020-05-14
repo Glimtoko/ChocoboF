@@ -1,6 +1,6 @@
 module write_tio
-use mesh_data
-use geom_data
+use iso_fortran_env, only: int32
+use globalconstants
 use core_input
 
 use typhonio
@@ -9,10 +9,15 @@ implicit none
 integer, save :: tio_count = 0
 
 contains
-subroutine write_tio_file(state, name)
+subroutine write_tio_file(state, name, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv)
 ! Arguments
-integer, intent(in) :: state
+integer(kind=int32), intent(in) :: state
 character(len=*), intent(in) :: name
+integer(kind=int32), intent(in) :: nel, nnod
+integer(kind=int32), dimension(:,:), intent(in) ::nodelist
+real(kind=dp), intent(in) :: time
+integer(kind=int32), intent(in) :: stepno
+real(kind=dp), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv
 
 ! Internal Stuff
 integer :: i, j, k

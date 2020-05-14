@@ -1,31 +1,36 @@
 module write_silo
-use lagstep
-use mesh_data
-use geom_data
+use iso_fortran_env, only: int32
+use globalconstants
 
 implicit none
 
 include "silo_f9x.inc"
 
-integer, save :: silo_count = 0
+integer(kind=int32), save :: silo_count = 0
 
 contains
-subroutine write_silo_file(state, name)
+subroutine write_silo_file(state, name, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv)
 ! Arguments
-integer, intent(in) :: state
+integer(kind=int32), intent(in) :: state
 character(len=*), intent(in) :: name
+integer(kind=int32), intent(in) :: nel, nnod
+integer(kind=int32), dimension(:,:), intent(in) ::nodelist
+real(kind=dp), intent(in) :: time
+integer(kind=int32), intent(in) :: stepno
+real(kind=dp), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv
+
 
 ! Filename
-integer :: stubsize
+integer(kind=int32) :: stubsize
 character(len=:), allocatable :: filename
 
 ! SILO stuff
-integer :: dbID, mesh_optlistID
-integer :: status, status2
+integer(kind=int32) :: dbID, mesh_optlistID
+integer(kind=int32) :: status, status2
 
 ! Internal stuff
-integer :: i, j, k
-integer, dimension(4*nel) :: connectivity
+integer(kind=int32) :: i, j, k
+integer(kind=int32), dimension(4*nel) :: connectivity
 
 silo_count = silo_count + 1
 

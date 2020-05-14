@@ -6,10 +6,8 @@ MODULE GRAPHICS
 ! Mesh movement done using Winslow's equipotential solver
 ! Solution quantities advected using the ideas
 ! of Van Leer and Benson
-USE GLOBALCONSTANTS
-USE geom_data
-use write_tio
-USE LAGSTEP
+use iso_fortran_env, only: int32
+use globalconstants
 
 
 IMPLICIT NONE
@@ -32,9 +30,17 @@ REAL(KIND=DP) ::xmidel,ymidel
 
 CONTAINS
 !===================================================================
-SUBROUTINE output(stepcnt)
+SUBROUTINE output(stepcnt, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv, volel, prout)
 IMPLICIT NONE
-integer :: stepcnt
+integer(kind=int32), intent(in) :: stepcnt
+integer(kind=int32), intent(in) :: nel, nnod
+integer(kind=int32), dimension(:,:), intent(in) ::nodelist
+real(kind=dp), intent(in) :: time
+integer(kind=int32), intent(in) :: stepno
+real(kind=dp), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv, volel
+integer(kind=int32), intent(inout) :: prout
+
+integer(kind=int32) :: iel, inod
 
 numbers="0123456789"
 filename="results/mypre_no"
@@ -52,8 +58,6 @@ IF (time.GE.0.20) then
     test_number=test_number-10*tens
     units=test_number
 
-!     write(*,*) "Output #",numbers(hundreds+1:hundreds+1)//numbers(tens+1:tens+1)// &
-!         numbers(units+1:units+1), " @ ", time
 
     OPEN(UNIT=11,FILE=trim(fileseven)//numbers(hundreds+1:hundreds+1)//numbers(tens+1:tens+1)// &
         numbers(units+1:units+1)//".txt" )

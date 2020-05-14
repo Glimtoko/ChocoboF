@@ -1,37 +1,48 @@
 !===================================================================
-PROGRAM ChocoboF
+program chocobof
+use iso_fortran_env, only: int32
 
-!This is the program for the mesh
-
-USE GLOBALCONSTANTS
-USE geom_data
+use globalconstants
+use geom_data
 use sod_init
 use lagrangian_hydro
 use mesh_data
 use core_input
-USE GRAPHICS
+use graphics
 use write_silo
 use write_tio
+use cutoffs, only: dtminhg
 
-IMPLICIT NONE
-REAL     :: ctime0, ctime
-! real(kind=dp) :: dtsilo, lastsilo
-! INTEGER:: nadvect, stepcnt, h5type
-! INTEGER:: nadvect
-! NAMELIST /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
-!         zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type,tioonefile
+implicit none
+real(kind=dp) :: ctime0, ctime
+real(kind=dp) :: dt05
+real(kind=dp) :: totalenergy,totalke,totalie
+integer(kind=int32) :: dtcontrol
 
-REAL(KIND=DP)     :: dt05
-REAL(KIND=DP) :: totalenergy,totalke,totalie
-INTEGER :: dtcontrol
+
 nadvect=0
 stepcnt = 0
 
-CALL CPU_TIME(ctime0)
+! CALL CPU_TIME(ctime0)
 
-! calc xv,yv, nodelist
-CALL geominit()
-CALL geomcalc()
+! Get mesh size
+CALL geominit(nel, nnod, nreg)
+
+! Allocate core mesh arrays
+ALLOCATE (xv(1:nnod), yv(1:nnod))
+ALLOCATE (znodbound(1:nnod))
+ALLOCATE (nodelist(1:4,1:nel))
+!*******************************************
+!initialise scalars, vectors, matrices     *
+!*******************************************
+xv=zero
+yv=zero
+nodelist=0
+
+! set logicals to 0
+znodbound=0
+
+CALL geomcalc(nreg, nodelist, znodbound, xv, yv)
 
 !
 !============end of geom initialise and connectivity arrays
@@ -55,8 +66,35 @@ allocate (nint(1:4,1:nel),dndx(1:4,1:nel),dndy(1:4,1:nel))
 allocate (elwtc(1:4,1:nel))
 allocate (pdndx(1:4,1:nel),pdndy(1:4,1:nel))
 
+divint=zero
+divvel=zero
+en=zero
+cc=zero
+qq=zero
+massel=zero
+volel=zero
+volelold=zero
+area=zero
 
-CALL init()
+!=====initialise prdcor var
+pre05=zero
+rho05=zero
+en05=zero
+volel05=zero
+xv05=zero
+yv05=zero
+uvold=zero
+vvold=zero
+uvbar=zero
+vvbar=zero
+
+!=initialise fem
+elwtc=zero
+nint=zero
+dndx=zero
+dndy=zero
+
+CALL init(nel, nodelist, xv, yv, pre, rho, uv, vv)
 
 ! calculate element volume and mass
 call calculate_volume(xv, yv, nodelist, nel, volel, area)
@@ -75,9 +113,9 @@ call calculate_total_energy( &
 
 ! ====== Time Zero Dump ======
 if (h5type == 1) then
-    call write_silo_file(1, "gasout")
+    call write_silo_file(1, "gasout", nel, nnod, nodelist, t0, 0, xv, yv, rho, pre, en, uv, vv)
 else
-    call write_tio_file(1, "gasout")
+    call write_tio_file(1, "gasout", nel, nnod, nodelist, t0, 0, xv, yv, rho, pre, en, uv, vv)
 end if
 
 !===================Lagstep predictor corrector drive========
@@ -86,6 +124,7 @@ time=t0
 lastsilo = t0
 dt=dtinit
 stepno = 1
+CALL CPU_TIME(ctime0)
 do while (time <= tf)
     !calculate the FEM elements
     call calculate_finite_elements( &
@@ -164,7 +203,6 @@ do while (time <= tf)
     call calculate_int_divv(zintdivvol, dt, volel, volelold, uvbar, vvbar, dndx, dndy, nodelist, nel, divint)
 
     !calculate full time step energy
-!     CALL energy(dt,pre05,qq,massel,en,divint,en)
     call calculate_energy(dt, pre05, qq, massel, en, divint, nel, en)
 
     ! calculate full time step pressure using eos
@@ -174,16 +212,14 @@ do while (time <= tf)
         write(*,'("SILO Output file created at time = ",f7.5)') time
         lastsilo = lastsilo + dtsilo
         if (h5type == 1) then
-            call write_silo_file(stepno, "gasout")
+            call write_silo_file(stepno, "gasout", nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv)
         else
-            call write_tio_file(stepno, "gasout")
+            call write_tio_file(stepno, "gasout", nel, nnod, nodelist, t0, 0, xv, yv, rho, pre, en, uv, vv)
         end if
     end if
     !+++++++++++++++ end Lagstep
 
-
-
-    call output(stepcnt)
+    call output(stepcnt, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv, volel, prout)
     stepno = stepno + 1
     if (stepno == stepcnt .and. stepcnt > 0) stop
 end do

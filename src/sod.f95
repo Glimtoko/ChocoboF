@@ -1,279 +1,253 @@
 module sod_init
-use globalconstants
-use geom_data
-use mesh_data
-use core_input
+use iso_fortran_env, only: int32
+
+use globalconstants, only: dp
+use geom_data, only: maxreg
 implicit none
 
-!        .. vectors ..
-REAL (KIND=DP), PUBLIC :: xo(1:maxreg) ! x points region start
-REAL (KIND=DP), PUBLIC :: yo(1:maxreg) ! y points region start
-REAL (KIND=DP), PUBLIC :: xf(1:maxreg) !  x points region end
-REAL (KIND=DP), PUBLIC :: yf(1:maxreg) !  x points region end
-INTEGER, PUBLIC :: meshx(1:maxreg) ! x mesh for each region
-INTEGER, PUBLIC :: meshy(1:maxreg) ! y mesh for each region
+! User inputs
+real (kind=dp), private :: xo(1:maxreg) ! x points region start
+real (kind=dp), private :: yo(1:maxreg) ! y points region start
+real (kind=dp), private :: xf(1:maxreg) !  x points region end
+real (kind=dp), private :: yf(1:maxreg) !  x points region end
+integer(kind=int32), private :: meshx(1:maxreg) ! x mesh for each region
+integer(kind=int32), private :: meshy(1:maxreg) ! y mesh for each region
 
-REAL (KIND=DP), PUBLIC, ALLOCATABLE :: deltax(:) !  x orig spacing/ region
-REAL (KIND=DP), PUBLIC, ALLOCATABLE :: deltay(:) ! y orig spacing/ region
-INTEGER, PUBLIC, ALLOCATABLE :: maxnod(:) ! mx node for each region
-INTEGER, PUBLIC, ALLOCATABLE :: maxel(:) ! mx element for each region
-INTEGER, PUBLIC :: uplow(1:maxreg)  !no el on top bottom boundary each reg
-INTEGER, PUBLIC :: lefrig(1:maxreg)   !no el on left right boundary counters
-INTEGER, PUBLIC :: low      ! boundary node counters
-INTEGER, PUBLIC :: up
-INTEGER, PUBLIC :: left
-INTEGER, PUBLIC :: right
+real (kind=dp), private, allocatable :: deltax(:) !  x orig spacing/ region
+real (kind=dp), private, allocatable :: deltay(:) ! y orig spacing/ region
+integer(kind=int32), private, allocatable :: maxnod(:) ! mx node for each region
+integer(kind=int32), private, allocatable :: maxel(:) ! mx element for each region
 
-!     .. Module Scalars ..
-INTEGER, PUBLIC    :: maxup,maxlef ! largest amount of boundary nodes over regions
 
 
 contains
-SUBROUTINE geominit()
-! set up variables, allocate, set G coeffs, error coeffs
-IMPLICIT NONE
 
-!**********************
-!input region pointers*
-! and meshing         *
-!**********************
-NAMELIST /inp/xo,xf,yo,yf,meshx,meshy
+subroutine geominit(nel, nnod, nreg)
+    ! set up variables, allocate, set g coeffs, error coeffs
+    implicit none
+    integer(kind=int32), intent(out) :: nel, nnod, nreg
 
-OPEN (UNIT=212, FILE='param.dat')
+    integer(kind=int32) :: uplow(maxreg)  !no el on top bottom boundary each reg
+    integer(kind=int32) :: lefrig(maxreg)   !no el on left right boundary counters
+    integer(kind=int32) :: maxup, maxlef ! largest amount of boundary nodes over regions
+    integer(kind=int32) :: ireg
+    !**********************
+    !input region pointers*
+    ! and meshing         *
+    !**********************
+    namelist /inp/xo,xf,yo,yf,meshx,meshy
 
-READ(212,NML=inp)
 
-WRITE(*,NML=inp)
 
-! Set nreg
-nreg = 1
+    open (unit=212, file='param.dat')
 
-! **************************
-! ALLOCATE  ARRAYS         *
-! **************************
-ALLOCATE (deltax(1:maxreg), deltay(1:maxreg), maxnod(0:maxreg), maxel(0:maxreg))
+    read(212,nml=inp)
 
-!calculate deltax, deltay, nel, maxnod
-nel=0
-nnod=0
-maxel=0
-maxnod=0
-uplow=0
-lefrig=0
-maxup=0
-maxlef=0
-Do ireg=1,nreg
-    deltax(ireg) = (xf(ireg) - xo(ireg))/REAL(meshx(ireg), DP)
-    deltay(ireg) = (yf(ireg) - yo(ireg))/REAL(meshy(ireg), DP)
+    write(*,nml=inp)
 
-    ! number nodes on each boundary
-    uplow(ireg) = meshx(ireg) + 1
-    lefrig(ireg) = meshy(ireg) + 1
-    IF (uplow(ireg).GT.maxup) THEN
-        maxup=uplow(ireg)
-    END IF
-    IF (lefrig(ireg).GT.maxlef) THEN
-        maxlef=lefrig(ireg)
-    END IF
+    ! set nreg
+    nreg = 1
 
-    ! GENERAL ELEMENT AND NODE NO'S AT END EACH REGION
-    maxel(ireg) = maxel(ireg-1) + meshx(ireg)*meshy(ireg)
-    maxnod(ireg) = maxnod(ireg-1) + (meshx(ireg)+1)*(meshy(ireg)+1)
+    ! **************************
+    ! allocate  arrays         *
+    ! **************************
+    allocate (deltax(1:maxreg), deltay(1:maxreg), maxnod(0:maxreg), maxel(0:maxreg))
 
-    ! number elements and nodes in whole problem
-    nel = nel + meshx(ireg)*meshy(ireg)   ! max el whole grid
-    nnod = nnod + (meshx(ireg)+1)*(meshy(ireg)+1)!max nod whole grid
-END DO
+    ! global values
+    nel = 0
+    nnod = 0
 
-write(*,*) 'maxlef, maxup', maxlef, maxup,nreg
-! **************************
-! ALLOCATE  ARRAYS         *
-! **************************
-ALLOCATE (xv(1:nnod), yv(1:nnod))
-ALLOCATE (znodbound(1:nnod))
-ALLOCATE (nodelist(1:4,1:nel))
-!*******************************************
-!initialise scalars, vectors, matrices     *
-!*******************************************
-xv=zero
-yv=zero
-nodelist=0
+    ! local values
+    maxel = 0
+    maxnod = 0
+    uplow = 0
+    lefrig = 0
+    maxup = 0
+    maxlef = 0
+    do ireg = 1,nreg
+        deltax(ireg) = (xf(ireg) - xo(ireg))/real(meshx(ireg), dp)
+        deltay(ireg) = (yf(ireg) - yo(ireg))/real(meshy(ireg), dp)
 
-! set logicals to 0
-znodbound=0
+        ! number nodes on each boundary
+        uplow(ireg) = meshx(ireg) + 1
+        lefrig(ireg) = meshy(ireg) + 1
+        if (uplow(ireg) > maxup) then
+            maxup = uplow(ireg)
+        end if
+        if (lefrig(ireg) > maxlef) then
+            maxlef = lefrig(ireg)
+        end if
 
-! Output fils
-OPEN (UNIT=21, FILE='results/time.txt')
-OPEN (UNIT=27, FILE='results/toten.txt')
-RETURN
+        ! general element and node no's at end each region
+        maxel(ireg) = maxel(ireg-1) + meshx(ireg)*meshy(ireg)
+        maxnod(ireg) = maxnod(ireg-1) + (meshx(ireg)+1)*(meshy(ireg)+1)
+
+        ! number elements and nodes in whole problem
+        nel = nel + meshx(ireg)*meshy(ireg)   ! max el whole grid
+        nnod = nnod + (meshx(ireg)+1)*(meshy(ireg)+1)!max nod whole grid
+    end do
+
+    write(*,*) 'maxlef, maxup', maxlef, maxup,nreg
+
+
+    ! output files
+    open (unit=21, file='results/time.txt')
+    open (unit=27, file='results/toten.txt')
+    return
 
 END SUBROUTINE geominit
 
 
 ! ===================================================================
-SUBROUTINE geomcalc()
-! calculates x array in terms of nodes
-IMPLICIT NONE
+subroutine geomcalc(nreg, nodelist, znodbound, xv, yv)
+    use globalconstants
+    ! calculates x array in terms of nodes
+    implicit none
 
-integer :: node1, node2, node3, node4
+    integer(kind=int32), intent(in) :: nreg
+    integer(kind=int32), dimension(:,:), intent(out) :: nodelist
+    integer(kind=int32), dimension(:), intent(out) :: znodbound
+    real(kind=dp), dimension(:), intent(out) :: xv, yv
 
-inod=1
+    integer(kind=int32) :: low      ! boundary node counters
+    integer(kind=int32) :: up
+    integer(kind=int32) :: left
+    integer(kind=int32) :: right
 
-Do ireg=1,nreg
-    left=1
-    right=1
-    up=1
-    low=1
+    integer(kind=int32) :: i, j, inod, ireg
+    integer(kind=int32) :: node1, node2, node3, node4
 
-    DO j=0,meshy(ireg)
-        DO i=0,meshx(ireg)
-            xv(inod) = xo(ireg) + i*deltax(ireg)
-            yv(inod) = yo(ireg) + j*deltay(ireg)
+    inod=1
 
-            node1 = inod-j-maxnod(ireg-1)+maxel(ireg-1)
-            node2 = inod-j-1-maxnod(ireg-1)+maxel(ireg-1)
-            node3 = inod-j-1-meshx(ireg)-maxnod(ireg-1)+maxel(ireg-1)
-            node4 = inod-j-meshx(ireg)-maxnod(ireg-1)+maxel(ireg-1)
+    do ireg=1,nreg
+        left=1
+        right=1
+        up=1
+        low=1
 
+        do j=0,meshy(ireg)
+            do i=0,meshx(ireg)
+                xv(inod) = xo(ireg) + i*deltax(ireg)
+                yv(inod) = yo(ireg) + j*deltay(ireg)
 
-            ! This part calculates
-            ! element node connectivity array
-            ! nodelist( gen el no, local nod no)=gen nod no
-
-            !general node
-            IF ((i /= 0).AND.(i /= meshx(ireg))) then
-                IF ((j /= 0).AND.(j /= meshy(ireg))) then
-                    nodelist(1,node1)=inod
-                    nodelist(2,node2)=inod
-                    nodelist(3,node3)=inod
-                    nodelist(4,node4)=inod
-                END IF
-            END IF
+                node1 = inod-j-maxnod(ireg-1)+maxel(ireg-1)
+                node2 = inod-j-1-maxnod(ireg-1)+maxel(ireg-1)
+                node3 = inod-j-1-meshx(ireg)-maxnod(ireg-1)+maxel(ireg-1)
+                node4 = inod-j-meshx(ireg)-maxnod(ireg-1)+maxel(ireg-1)
 
 
-            !boundary and corner nodes
-            IF (j == 0) then
-                IF ((i /= 0).AND.(i /= meshx(ireg))) then
-                    nodelist(2,node2)=inod
-                    nodelist(1,node1)=inod
-                    low=low+1
-                    znodbound(inod)=-2
-                END IF
-            END IF
+                ! this part calculates
+                ! element node connectivity array
+                ! nodelist( gen el no, local nod no)=gen nod no
 
-            IF (j == meshy(ireg)) then
-                IF((i /= 0).AND.(i /= meshx(ireg))) then
-                    nodelist(3,node3)=inod
-                    nodelist(4,node4)=inod
-                    up=up+1
-                    znodbound(inod)=-2
-                END IF
-            END IF
-
-            IF (i == 0) then
-                IF (j == 0) then  !corner node
-                    nodelist(1,node1)=inod
-                    low=low+1
-                    left=left+1
-                    znodbound(inod)=-3
-                ELSE IF (j == meshy(ireg)) then !corner node
-                    nodelist(4,node4)=inod
-                    left=left+1
-                    up=up+1
-                    znodbound(inod)=-3
-                ELSE   ! boundary node
-                    nodelist(4,node4)=inod
-                    nodelist(1,node1)=inod
-                    left=left+1
-                    znodbound(inod)=-1
-                END IF
-            END IF
-
-            IF (i == meshx(ireg)) then
-                IF (j == 0) then     !corner node
-                    nodelist(2,node2)=inod
-                    right=right+1
-                    low=low+1
-                    znodbound(inod)=-3
-                ELSE IF (j == meshy(ireg)) then  !corner node
-                    nodelist(3,node3)=inod
-                    right=right+1
-                    up=up+1
-                    znodbound(inod)=-3
-                ELSE   ! boundary node
-                    nodelist(3,node3)=inod
-                    nodelist(2,node2)=inod
-                    right=right+1
-                    znodbound(inod)=-1
-                END IF
-            END IF
-
-            inod=inod+1
-        END DO
-    END DO
-END DO
-
-!need boundary arrays
-RETURN
-END SUBROUTINE geomcalc
+                !general node
+                if ((i /= 0) .and. (i /= meshx(ireg))) then
+                    if ((j /= 0) .and. (j /= meshy(ireg))) then
+                        nodelist(1,node1)=inod
+                        nodelist(2,node2)=inod
+                        nodelist(3,node3)=inod
+                        nodelist(4,node4)=inod
+                    end if
+                end if
 
 
-SUBROUTINE init()
-!enter initial test problem configuration here
-IMPLICIT NONE
-REAL (KIND=DP)::   xbubble, ybubble
-! SOD problem
-pre=zero
-rho=zero
-uv=zero
-vv=zero
-! SOD circle quarter
-pre=one/ten
-rho=one/eight
-uv=zero
-vv=zero
-Do iel=1,nel
-    xbubble=xv(nodelist(1,iel))+xv(nodelist(2,iel))  &
-            +xv(nodelist(3,iel))+xv(nodelist(4,iel))
-    xbubble=xbubble/four
-    ybubble=yv(nodelist(1,iel))+yv(nodelist(2,iel))  &
-            +yv(nodelist(3,iel))+yv(nodelist(4,iel))
-    ybubble=ybubble/four
-    If ((xbubble)**2+(ybubble)**2 <= ((0.4_DP*(yf(1)-yo(1)))**2)+0.0000001_DP) then
-        rho(iel)=one
-        pre(iel)=one
-    END IF
-END DO
+                !boundary and corner nodes
+                if (j == 0) then
+                    if ((i /= 0) .and. (i /= meshx(ireg))) then
+                        nodelist(2,node2)=inod
+                        nodelist(1,node1)=inod
+                        low=low+1
+                        znodbound(inod)=-2
+                    end if
+                end if
 
-divint=zero
-divvel=zero
-en=zero
-cc=zero
-qq=zero
-massel=zero
-volel=zero
-volelold=zero
-area=zero
+                if (j == meshy(ireg)) then
+                    if((i /= 0) .and. (i /= meshx(ireg))) then
+                        nodelist(3,node3)=inod
+                        nodelist(4,node4)=inod
+                        up=up+1
+                        znodbound(inod)=-2
+                    end if
+                end if
 
-!=====initialise prdcor var
-pre05=zero
-rho05=zero
-en05=zero
-volel05=zero
-xv05=zero
-yv05=zero
-uvold=zero
-vvold=zero
-uvbar=zero
-vvbar=zero
+                if (i == 0) then
+                    if (j == 0) then  !corner node
+                        nodelist(1,node1)=inod
+                        low=low+1
+                        left=left+1
+                        znodbound(inod)=-3
+                    else if (j == meshy(ireg)) then !corner node
+                        nodelist(4,node4)=inod
+                        left=left+1
+                        up=up+1
+                        znodbound(inod)=-3
+                    else   ! boundary node
+                        nodelist(4,node4)=inod
+                        nodelist(1,node1)=inod
+                        left=left+1
+                        znodbound(inod)=-1
+                    end if
+                end if
 
-!=initialise fem
-elwtc=zero
-nint=zero
-dndx=zero
-dndy=zero
-RETURN
-END SUBROUTINE init
+                if (i == meshx(ireg)) then
+                    if (j == 0) then     !corner node
+                        nodelist(2,node2)=inod
+                        right=right+1
+                        low=low+1
+                        znodbound(inod)=-3
+                    else if (j == meshy(ireg)) then  !corner node
+                        nodelist(3,node3)=inod
+                        right=right+1
+                        up=up+1
+                        znodbound(inod)=-3
+                    else   ! boundary node
+                        nodelist(3,node3)=inod
+                        nodelist(2,node2)=inod
+                        right=right+1
+                        znodbound(inod)=-1
+                    end if
+                end if
+
+                inod=inod+1
+            end do
+        end do
+    end do
+end subroutine geomcalc
+
+
+subroutine init(nel, nodelist, xv, yv, pre, rho, uv, vv)
+    use globalconstants
+    implicit none
+    integer(kind=int32), intent(in) :: nel
+    integer(kind=int32), dimension(:,:), intent(in) :: nodelist
+    real(kind=dp), dimension(:), intent(in) :: xv, yv
+
+    real(kind=dp), dimension(:), intent(out) :: pre, rho, uv, vv
+
+    real (kind=dp) ::   xbubble, ybubble
+    integer(kind=int32) :: iel
+
+
+    ! sod circle quarter
+    pre=one/ten
+    rho=one/eight
+    uv=zero
+    vv=zero
+    do iel=1,nel
+        xbubble=xv(nodelist(1,iel))+xv(nodelist(2,iel))  &
+                +xv(nodelist(3,iel))+xv(nodelist(4,iel))
+        xbubble=xbubble/four
+        ybubble=yv(nodelist(1,iel))+yv(nodelist(2,iel))  &
+                +yv(nodelist(3,iel))+yv(nodelist(4,iel))
+        ybubble=ybubble/four
+        if ((xbubble)**2+(ybubble)**2 <= ((0.4_dp*(yf(1)-yo(1)))**2)+0.0000001_dp) then
+            rho(iel)=one
+            pre(iel)=one
+        end if
+    end do
+
+
+end subroutine init
 
 
 end module
