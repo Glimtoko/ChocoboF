@@ -4,6 +4,7 @@ USE geom_data
 use mesh_data
 use cutoffs
 use core_input
+! use lagrangian_hydro, only: hourglass_filter
 
 
 IMPLICIT NONE
@@ -18,7 +19,7 @@ CONTAINS
 SUBROUTINE declare()
 !allocate physical variables
 IMPLICIT NONE
-ALLOCATE (forcenodx(1:nnod),forcenody(1:nnod))
+! ALLOCATE (forcenodx(1:nnod),forcenody(1:nnod))
 ALLOCATE (pre(1:nel),rho(1:nel),en(1:nel),cc(1:nel),qq(1:nel))
 ALLOCATE (massel(1:nel),area(1:nel),volel(1:nel),volelold(1:nel))
 ALLOCATE (uv(1:nnod),vv(1:nnod))
@@ -426,6 +427,12 @@ END DO
 
 IF (zantihg.EQ.1) THEN
 CALL hourglass(u,v,den,step,ndx,ndy,forcenodx,forcenody)
+!     call hourglass_filter( &
+!     uv, vv, xv05, yv05, den, area, cc, &
+!     dt, dtminhg, dndx, dndy, hgregtyp, kappareg, nodelist, nel, &
+!     forcenodx, forcenody &
+! )
+
 END IF
 
 DO inod=1,nnod

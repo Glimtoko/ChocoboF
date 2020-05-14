@@ -6,6 +6,65 @@ use globalconstants
 use iso_fortran_env, only: int32
 contains
 
+
+subroutine calculate_mass(volel, rho, nel, massel)
+    !calculate element mass=element density* element volume
+    implicit none
+    real(kind=dp), dimension(:), intent(in) :: volel, rho
+    integer(kind=int32), intent(in) :: nel
+
+    real(kind=dp), dimension(:), intent(out) :: massel
+
+    integer(kind=int32) :: iel
+
+    do iel=1,nel
+        massel(iel)=volel(iel)*rho(iel)
+    end do
+    return
+end subroutine calculate_mass
+
+
+subroutine calculate_total_energy( &
+    energy, rho, u, v, mass, elwtc, nodelist, nel, zaxis, &
+    total_energy, total_ke, total_ie &
+)
+    implicit none
+    real (kind=dp), dimension(:), intent(in) ::  energy, rho
+    real (kind=dp), dimension(:), intent(in) ::  u, v, mass
+    real(kind=dp), dimension(:,:), intent(in) :: elwtc
+    integer(kind=int32), dimension(:,:), intent(in) :: nodelist
+    integer(kind=int32), intent(in) :: nel, zaxis
+
+    real (kind=dp), intent(out):: total_energy, total_ie, total_ke
+
+    real (kind=dp) :: elenergy
+    real (kind=dp) :: two_pi, tek
+    integer(kind=int32) :: iel, j
+
+    if (zaxis == 0) then
+        two_pi = one
+    else if (zaxis == 1) then
+        two_pi = twopi
+    end if
+
+    total_energy = zero
+    total_ke = zero
+    total_ie = zero
+    do iel = 1,nel
+        tek = zero
+
+        do j = 1,4
+            tek =  tek + half*rho(iel)*elwtc(j,iel)*   &
+                   (u(nodelist(j,iel))**2 + v(nodelist(j,iel))**2)*two_pi
+        end do
+        elenergy = mass(iel)*energy(iel)*two_pi + tek
+        total_ke = total_ke + tek
+        total_ie = total_ie + mass(iel)*energy(iel)*two_pi
+        total_energy = total_energy+elenergy
+    end do
+end subroutine calculate_total_energy
+
+
 subroutine calculate_finite_elements(x, y, nodelist, nel, ni, dndx, dndy, pdndx, pdndy, elwtc)
     implicit none
     real(kind=dp), dimension(:), intent(in) ::  x, y
@@ -21,7 +80,7 @@ subroutine calculate_finite_elements(x, y, nodelist, nel, ni, dndx, dndy, pdndx,
 
     integer :: iel, jjj
 
-    real(kind=dp) :: a1,a2,a3,b1,b2,b3
+    real(kind=dp) :: a1, a2, a3, b1, b2, b3
 
 
     do iel = 1,nel
@@ -300,5 +359,239 @@ subroutine calculate_energy(dt, press, visc, mass, ener, intdiv, nel, enout)
         enout(iel) = ener(iel) - dt*(press(iel)+visc(iel))*intdiv(iel)/mass(iel)
     end do
 end subroutine calculate_energy
+
+
+subroutine perfect_gas(energy, rho, gamma, nel, pressure)
+    implicit none
+    real(kind=dp), dimension(:), intent(in) ::  energy, rho
+    real(kind=dp), intent(in) :: gamma
+    integer(kind=int32), intent(in) :: nel
+
+    real(kind=dp), dimension(:), intent(out) :: pressure
+
+    integer(kind=int32) :: iel
+
+    do iel=1,nel
+        pressure(iel) = (gamma - one)*rho(iel)*energy(iel)
+    end do
+end subroutine perfect_gas
+
+
+subroutine hourglass_filter( &
+    u, v, x05, y05, rho, area, cc, &
+    dt, dtminhg, dndx, dndy, hgregtyp, kappareg, nodelist, nel, &
+    fx, fy &
+)
+
+    ! 26th june
+    !calculate anti-hourglass filters
+    !called in momentum subroutine
+
+    implicit none
+    real (kind=dp), intent(in), dimension(:) :: u, v, x05, y05, rho, area, cc
+    real (kind=dp), intent(in) :: dt, dtminhg
+    real (kind=dp), intent(in), dimension(:,:) :: dndx, dndy
+    integer(kind=int32), intent(in), dimension(:) :: hgregtyp
+    real (kind=dp), intent(in), dimension(:) :: kappareg
+    integer(kind=int32), dimension(:,:), intent(in) :: nodelist
+    integer(kind=int32), intent(in) :: nel
+
+    real (kind=dp), intent(inout)::fx(:),fy(:)
+
+
+    real (kind=dp)  :: ugam, vgam, temp, biibii, xdiff, ydiff
+    real (kind=dp)  :: gam1, gam2, gam3, gam4, qx, qy, kap
+    integer(kind=int32) :: hgtyp, iel
+
+    real(kind=dp) :: a1,a2,a3,b1,b2,b3
+
+    ! do ireg=1,nreg   ! loop regions
+
+        hgtyp = hgregtyp(1)
+
+        if (hgtyp == 3) then
+        ! dyna hourglass type 2 with different l and no speed
+            do iel=1, nel
+            ! calculate u  gamma
+            !            ik     k
+            ugam=u(nodelist(1,iel))-u(nodelist(2,iel))    &
+                +u(nodelist(3,iel))-u(nodelist(4,iel))
+            vgam=v(nodelist(1,iel))-v(nodelist(2,iel))    &
+                +v(nodelist(3,iel))-v(nodelist(4,iel))
+
+            ! add hg restoring force to nodal components
+            kap=kappareg(1)
+            temp = -1.0*kap*rho(iel)*abs(area(iel))/max(dt,dtminhg)
+
+            fx(nodelist(1,iel)) = fx(nodelist(1,iel)) + temp*ugam
+            fy(nodelist(1,iel)) = fy(nodelist(1,iel)) + temp*vgam
+            fx(nodelist(2,iel)) = fx(nodelist(2,iel)) - temp*ugam
+            fy(nodelist(2,iel)) = fy(nodelist(2,iel)) - temp*vgam
+            fx(nodelist(3,iel)) = fx(nodelist(3,iel)) + temp*ugam
+            fy(nodelist(3,iel)) = fy(nodelist(3,iel)) + temp*vgam
+            fx(nodelist(4,iel)) = fx(nodelist(4,iel)) - temp*ugam
+            fy(nodelist(4,iel)) = fy(nodelist(4,iel)) - temp*vgam
+
+            end do
+        end if
+
+        if (hgtyp == 2) then
+        ! as used in dyna
+        ! involves speed
+        ! charcteristic length sqrt(area)
+            do iel=1, nel
+            ! calculate u  gamma
+            !            ik     k
+            ugam=u(nodelist(1,iel))-u(nodelist(2,iel))    &
+                +u(nodelist(3,iel))-u(nodelist(4,iel))
+            vgam=v(nodelist(1,iel))-v(nodelist(2,iel))    &
+                +v(nodelist(3,iel))-v(nodelist(4,iel))
+
+            ! add hg restoring force to nodal components
+            kap=kappareg(1)
+            temp = -1.0*kap*rho(iel)*sqrt(area(iel))*cc(iel)
+
+            fx(nodelist(1,iel)) = fx(nodelist(1,iel)) + temp*ugam
+            fy(nodelist(1,iel)) = fy(nodelist(1,iel)) + temp*vgam
+            fx(nodelist(2,iel)) = fx(nodelist(2,iel)) - temp*ugam
+            fy(nodelist(2,iel)) = fy(nodelist(2,iel)) - temp*vgam
+            fx(nodelist(3,iel)) = fx(nodelist(3,iel)) + temp*ugam
+            fy(nodelist(3,iel)) = fy(nodelist(3,iel)) + temp*vgam
+            fx(nodelist(4,iel)) = fx(nodelist(4,iel)) - temp*ugam
+            fy(nodelist(4,iel)) = fy(nodelist(4,iel)) - temp*vgam
+            end do
+        end if
+
+        if (hgtyp == 1) then
+        ! type 1 is artificial damping and stiffness as described
+        ! by belystchko and flanagan
+            do iel=1, nel
+
+            a1=quarter*(-x05(nodelist(1,iel))+x05(nodelist(2,iel))   &
+                    +x05(nodelist(3,iel))-x05(nodelist(4,iel)))
+            a2=quarter*(x05(nodelist(1,iel))-x05(nodelist(2,iel))   &
+                    +x05(nodelist(3,iel))-x05(nodelist(4,iel)))
+            a3=quarter*(-x05(nodelist(1,iel))-x05(nodelist(2,iel))   &
+                    +x05(nodelist(3,iel))+x05(nodelist(4,iel)))
+            b1=quarter*(-y05(nodelist(1,iel))+y05(nodelist(2,iel))   &
+                    +y05(nodelist(3,iel))-y05(nodelist(4,iel)))
+            b2=quarter*(y05(nodelist(1,iel))-y05(nodelist(2,iel))   &
+                    +y05(nodelist(3,iel))-y05(nodelist(4,iel)))
+            b3=quarter*(-y05(nodelist(1,iel))-y05(nodelist(2,iel))   &
+                    +y05(nodelist(3,iel))+y05(nodelist(4,iel)))
+            biibii=four*(b3**2+b1**2+a3**2+a1**2)
+            xdiff=x05(nodelist(1,iel))-x05(nodelist(2,iel))    &
+                    +x05(nodelist(3,iel))-x05(nodelist(4,iel))
+            ydiff=y05(nodelist(1,iel))-y05(nodelist(2,iel))    &
+                    +y05(nodelist(3,iel))-y05(nodelist(4,iel))
+            gam1= half-half*(dndx(1,iel)*xdiff+dndy(1,iel)*ydiff)/area(iel)
+            gam2=-half-half*(dndx(2,iel)*xdiff+dndy(2,iel)*ydiff)/area(iel)
+            gam3= half-half*(dndx(3,iel)*xdiff+dndy(3,iel)*ydiff)/area(iel)
+            gam4=-half-half*(dndx(4,iel)*xdiff+dndy(4,iel)*ydiff)/area(iel)
+
+            ! qx qy different forms according to
+            ! whether artificial damping or stiffness are required
+
+            kap=kappareg(1)
+            qx= -kap*rho(iel)*cc(iel)*sqrt(biibii)/ten  &!damping
+                -half*kap*rho(iel)*dt*(cc(iel)**2)*biibii/area(iel) !stiffness
+
+            qy= qx*(gam1*v(nodelist(1,iel))+gam2*v(nodelist(2,iel))  &
+                    +gam3*v(nodelist(3,iel))+gam4*v(nodelist(4,iel)))
+            qx= qx*(gam1*u(nodelist(1,iel))+gam2*u(nodelist(2,iel))  &
+                    +gam3*u(nodelist(3,iel))+gam4*u(nodelist(4,iel)))
+
+            fx(nodelist(1,iel)) = fx(nodelist(1,iel)) + gam1*qx
+            fy(nodelist(1,iel)) = fy(nodelist(1,iel)) + gam1*qy
+            fx(nodelist(2,iel)) = fx(nodelist(2,iel)) + gam2*qx
+            fy(nodelist(2,iel)) = fy(nodelist(2,iel)) + gam2*qy
+            fx(nodelist(3,iel)) = fx(nodelist(3,iel)) + gam3*qx
+            fy(nodelist(3,iel)) = fy(nodelist(3,iel)) + gam3*qy
+            fx(nodelist(4,iel)) = fx(nodelist(4,iel)) + gam4*qx
+            fy(nodelist(4,iel)) = fy(nodelist(4,iel)) + gam4*qy
+
+            end do
+        end if
+    ! end do
+
+end subroutine hourglass_filter
+
+
+subroutine momentum_calculation( &
+    dt, dtminhg, &
+    zantihg, hgregtyp, kappareg, &
+    u, v, x, y, rho, pressure, area, cc, q,  &  ! X, Y are half timestep
+    nint, dndx, dndy, &
+    nodelist, znodbound, nel, nnod, &
+    uout, vout &
+)
+    implicit none
+    real(kind=dp), intent(in) :: dt, dtminhg
+    integer(kind=int32), intent(in) :: zantihg
+    integer(kind=int32), dimension(:), intent(in) :: hgregtyp
+    real(kind=dp), dimension(:), intent(in) :: kappareg
+    real(kind=dp), dimension(:), intent(in) :: u, v, x, y, rho, pressure
+    real(kind=dp), dimension(:), intent(in) :: area, cc, q
+    real(kind=dp), dimension(:,:), intent(in) :: nint, dndx, dndy
+    integer(kind=int32), dimension(:,:), intent(in) :: nodelist
+    integer(kind=int32), dimension(:), intent(in) :: znodbound
+    integer(kind=int32), intent(in) :: nel, nnod
+
+    real(kind=dp), dimension(:), intent(out) :: uout, vout
+
+    real(kind=dp), allocatable :: massnod(:) !node mass
+    real(kind=dp), allocatable :: massj(:) !node mass el
+    real(kind=dp), allocatable :: forcejx(:) !force mass el
+    real(kind=dp), allocatable :: forcejy(:) !force mass el
+    real(kind=dp), allocatable :: forcenodx(:) !force mass x
+    real(kind=dp), allocatable :: forcenody(:) !force mass y
+
+    integer(kind=int32) :: iel, inod, j
+
+    allocate(massnod(1:nnod), massj(1:nnod), forcejx(1:nnod))
+    allocate(forcejy(1:nnod))
+    allocate(forcenodx(nnod))
+    allocate(forcenody(nnod))
+
+    massnod=zero
+    forcenodx=zero
+    forcenody=zero
+    do inod=1,nnod
+        do iel=1,nel
+            do j=1,4
+                ! this will calculate fine cells contrib to
+                !disjoint nodes aswell
+                if (nodelist(j,iel) == inod) then
+                    massnod(inod) = massnod(inod) + rho(iel)*nint(j,iel)
+                    forcenodx(inod) = forcenodx(inod) + (pressure(iel)+q(iel))*dndx(j,iel)
+                    forcenody(inod) = forcenody(inod) + (pressure(iel)+q(iel))*dndy(j,iel)
+                end if
+            end do
+        end do
+    end do
+
+    if (zantihg == 1) then
+        call hourglass_filter( &
+            u, v, x, y, rho, area, cc, &
+            dt, dtminhg, dndx, dndy, hgregtyp, kappareg, nodelist, nel, &
+            forcenodx, forcenody &
+        )
+
+    end if
+
+    do inod=1,nnod
+        uout(inod)=u(inod)+dt*forcenodx(inod)/massnod(inod)
+        vout(inod)=v(inod)+dt*forcenody(inod)/massnod(inod)
+
+        if ((znodbound(inod) == -1).or.(znodbound(inod) == -3)) then
+            uout(inod)=u(inod)
+        end if
+
+        if ((znodbound(inod) == -2).or.(znodbound(inod) == -3)) then
+            vout(inod)=v(inod)
+        end if
+    end do
+
+end subroutine momentum_calculation
 
 end module lagrangian_hydro

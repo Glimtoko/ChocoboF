@@ -6,7 +6,6 @@ PROGRAM ChocoboF
 USE GLOBALCONSTANTS
 USE geom_data
 use sod_init
-USE LAGSTEP
 use lagrangian_hydro
 use mesh_data
 use core_input
@@ -45,18 +44,34 @@ READ(212,NML=tinp)
 WRITE(*,NML=tinp)
 
 ! initialise physical variables
-CALL declare()
+allocate (pre(1:nel),rho(1:nel),en(1:nel),cc(1:nel),qq(1:nel))
+allocate (massel(1:nel),area(1:nel),volel(1:nel),volelold(1:nel))
+allocate (uv(1:nnod),vv(1:nnod))
+allocate (pre05(1:nel),rho05(1:nel),en05(1:nel),volel05(1:nel))
+allocate (divint(1:nel),divvel(1:nel))
+allocate (uvold(1:nnod),vvold(1:nnod),uvbar(1:nnod),vvbar(1:nnod))
+allocate (xv05(1:nnod),yv05(1:nnod))
+allocate (nint(1:4,1:nel),dndx(1:4,1:nel),dndy(1:4,1:nel))
+allocate (elwtc(1:4,1:nel))
+allocate (pdndx(1:4,1:nel),pdndy(1:4,1:nel))
+
+
 CALL init()
+
 ! calculate element volume and mass
-CALL volcalc(xv,yv,volel,area)
-CALL masscalc()
+call calculate_volume(xv, yv, nodelist, nel, volel, area)
+call calculate_mass(volel, rho, nel, massel)
 
 
 Do iel=1,nel
     en(iel)=pre(iel)/((gamma-one)*rho(iel))
 END DO
 
-CALL totalen(en,rho,uv,vv,totalenergy,totalke,totalie)
+! CALL totalen(en,rho,uv,vv,totalenergy,totalke,totalie)
+call calculate_total_energy( &
+    en, rho, uv, vv, massel, elwtc, nodelist, nel, zaxis, &
+    totalenergy, totalke, totalie &
+)
 
 ! ====== Time Zero Dump ======
 if (h5type == 1) then
@@ -71,7 +86,7 @@ time=t0
 lastsilo = t0
 dt=dtinit
 stepno = 1
-DO WHILE (time.LE.tf)
+do while (time <= tf)
     !calculate the FEM elements
     call calculate_finite_elements( &
         xv, yv, nodelist, nel, nint, dndx, dndy, pdndx, pdndy, elwtc &
@@ -114,17 +129,19 @@ DO WHILE (time.LE.tf)
     call calculate_int_divv(zintdivvol, dt05, volel, volelold, uv, vv, dndx, dndy, nodelist, nel, divint)
 
     !calculate 1/2 time step energy
-!     CALL energy(dt05,pre,qq,massel,en, divint,en05)
     call calculate_energy(dt05, pre, qq, massel, en, divint, nel, en05)
 
     ! calculate 1/2 time step pressure using eos
-    CALL eos(en05,rho05,pre05)
+    call perfect_gas(en05, rho05, gamma, nel, pre05)
 
     ! momentum equation end timestep
     uvold=uv     !store old velocity values
     vvold=vv
 
-    CALL momentum(dt,uvold,vvold,rho05,pre05,qq, nint, dndx, dndy,uv,vv)
+!     CALL momentum(dt,uvold,vvold,rho05,pre05,qq, nint, dndx, dndy,uv,vv)
+    call momentum_calculation(dt, dtminhg, zantihg, hgregtyp, kappareg, &
+        uvold, vvold, xv05, yv05, rho05, pre05, area, cc, qq,  &
+        nint, dndx, dndy, nodelist, znodbound, nel, nnod, uv, vv)
 
     uvbar=half*(uvold+uv) !calculate an average
     vvbar=half*(vvold+vv)
@@ -151,7 +168,7 @@ DO WHILE (time.LE.tf)
     call calculate_energy(dt, pre05, qq, massel, en, divint, nel, en)
 
     ! calculate full time step pressure using eos
-    CALL eos(en,rho,pre)
+    call perfect_gas(en, rho, gamma, nel, pre)
 
     if ((time - lastsilo) >= dtsilo) then
         write(*,'("SILO Output file created at time = ",f7.5)') time
@@ -162,17 +179,14 @@ DO WHILE (time.LE.tf)
             call write_tio_file(stepno, "gasout")
         end if
     end if
-    ! error check total energy
-!     CALL totalen(en,rho,uv,vv,totalenergy,totalke,totalie)
-!     WRITE(27,*) time, prout, totalenergy
     !+++++++++++++++ end Lagstep
 
 
 
-    CALL output(stepcnt)
+    call output(stepcnt)
     stepno = stepno + 1
     if (stepno == stepcnt .and. stepcnt > 0) stop
-END DO
+end do
 
 ! Time taken
 CALL CPU_TIME(ctime)
@@ -182,48 +196,3 @@ WRITE (*, *) ' CPU TIME ' , ctime - ctime0, 'seconds'
 
 
 END PROGRAM ChocoboF
-!
-! SUBROUTINE stabletimestep(dtcontrol)
-! USE GLOBALCONSTANTS
-! USE geom_data
-! USE LAGSTEP
-! IMPLICIT NONE
-!
-! integer, intent(out) :: dtcontrol
-! REAL (KIND=DP)::dtmin,deltat(1:nel),dtold
-!
-!
-! dtmin=one
-! dtold=dt
-!
-! ! print *, area(1)
-! dtcontrol = 0
-! if (dtoption == 1) then
-!     do ireg=1,nreg
-! !         do iel=maxel(ireg-1)+1, maxel(ireg)
-!         do iel=1,nel
-!             deltat(iel)=area(iel)/MAX(dencut,((cc(iel)**2)+two*(qq(iel)/rho(iel))))
-!
-!             deltat(iel)=(sqrt(deltat(iel)))/two
-!             if (area(iel) < 0.0) print *, "Negative area in cell", iel, deltat(iel)
-!             IF (deltat(iel).LT.dtmin) then
-!                 dtcontrol = iel
-!                 dtmin=deltat(iel)
-!             END IF
-!         end do
-!     end do
-! end if
-!
-! IF (time.EQ.t0) THEN
-!     dt=MIN(dtmin, maxallstep, dtinit)
-! ELSE
-!     dt=MIN(dtmin, maxallstep, growth*dtold)
-!     if (dt ==growth*dtold) dtcontrol = -1
-! END IF
-! IF ((time.GT.0.2500000000000_DP-dt).AND.(time.LT.0.2510050000)) THEN
-!     dt= 0.25000000000000_DP-time
-! END IF
-! WRITE(21,*) time,dt,dtmin
-!
-! RETURN
-! END SUBROUTINE stabletimestep
