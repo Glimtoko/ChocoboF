@@ -35,5 +35,7 @@ clean:
 # Dependencies
 prog.o: data.o memory_manipulation.o sod.o lagstep_fi.o graphics.o
 
+sod.o: data.o	# For input and file unit
+
 graphics.o: write_tio.o write_silo.o
 

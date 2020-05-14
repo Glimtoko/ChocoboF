@@ -21,6 +21,7 @@ integer(kind=int32), private, allocatable :: maxel(:) ! mx element for each regi
 contains
 
 subroutine geominit(nel, nnod, nreg)
+    use fileunits
     ! set up variables, allocate, set g coeffs, error coeffs
     implicit none
     integer(kind=int32), intent(out) :: nel, nnod, nreg
@@ -34,12 +35,7 @@ subroutine geominit(nel, nnod, nreg)
     ! and meshing         *
     !**********************
     namelist /inp/xo,xf,yo,yf,meshx,meshy
-
-
-
-    open (unit=212, file='param.dat')
-
-    read(212,nml=inp)
+    read(control,nml=inp)
 
     write(*,nml=inp)
 

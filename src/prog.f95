@@ -2,22 +2,19 @@
 program chocobof
 use iso_fortran_env, only: int32, real64
 
+use fileunits
 use memory_management
 use mesh_mod
 
-
-! use geom_data
 use sod_init
 use lagrangian_hydro
 use core_input
-use graphics
+use text_output
 use write_silo
 use write_tio
-! use cutoffs, only: dtminhg
 
 implicit none
 real(kind=real64) :: ctime0, ctime
-real(kind=real64) :: dt05
 real(kind=real64) :: totalenergy,totalke,totalie
 integer(kind=int32) :: dtcontrol
 
@@ -25,21 +22,21 @@ integer(kind=int32) :: iel
 
 REAL(kind=real64) :: time
 INTEGER(kind=int32) :: prout, stepno
-REAL(kind=real64) :: dt
+REAL(kind=real64) :: dt, dt05
 
 integer(kind=int32) :: lastsilo
 
 type(MeshT) :: mesh
 
 
-stepcnt = 0
+! Open input file
+open(unit=control, file='param.dat')
 
 ! Get mesh size
-CALL geominit(mesh%nel, mesh%nnod, mesh%nreg)
+call geominit(mesh%nel, mesh%nnod, mesh%nreg)
 
-!*******************************************
-!initialise scalars, vectors, matrices     *
-!*******************************************
+
+! Initialise scalars, vectors, matrices
 call set_data(mesh%xv, mesh%nnod)
 call set_data(mesh%yv, mesh%nnod)
 call set_data(mesh%xv05, mesh%nnod)
@@ -81,35 +78,31 @@ call set_data(mesh%elwtc, 4, mesh%nel)
 call set_data(mesh%pdndx, 4, mesh%nel)
 call set_data(mesh%pdndy, 4, mesh%nel)
 
-CALL geomcalc(mesh%nreg, mesh%nodelist, mesh%znodbound, mesh%xv, mesh%yv)
+! Generate mesh geometry
+call geomcalc(mesh%nreg, mesh%nodelist, mesh%znodbound, mesh%xv, mesh%yv)
 
-!
-!============end of geom initialise and connectivity arrays
+! Read user input
+read(control, nml=tinp)
+write(*, nml=tinp)
 
-!==============initialisation for lagstep===============
+! Initialise spherical sod problem
+call init(mesh%nel, mesh%nodelist, mesh%xv, mesh%yv, mesh%pre, mesh%rho, mesh%uv, mesh%vv)
 
-! time input namelist and eos,artif visc variables
-
-READ(212,NML=tinp)
-WRITE(*,NML=tinp)
-
-CALL init(mesh%nel, mesh%nodelist, mesh%xv, mesh%yv, mesh%pre, mesh%rho, mesh%uv, mesh%vv)
-
-! calculate element volume and mass
+! Calculate element volume and mass
 call calculate_volume(mesh%xv, mesh%yv, mesh%nodelist, mesh%nel, mesh%volel, mesh%area)
 call calculate_mass(mesh%volel, mesh%rho, mesh%nel, mesh%massel)
 
 
-Do iel=1,mesh%nel
-    mesh%en(iel)=mesh%pre(iel)/((gamma-1.0_real64)*mesh%rho(iel))
-END DO
+do iel = 1, mesh%nel
+    mesh%en(iel) = mesh%pre(iel)/((gamma - 1.0_real64)*mesh%rho(iel))
+end do
 
 call calculate_total_energy( &
     mesh%en, mesh%rho, mesh%uv, mesh%vv, mesh%massel, mesh%elwtc, mesh%nodelist, mesh%nel, zaxis, &
     totalenergy, totalke, totalie &
 )
 
-! ====== Time Zero Dump ======
+! Time zero visualisation
 if (h5type == 1) then
     call write_silo_file(1, "gasout", mesh%nel, mesh%nnod, mesh%nodelist, t0, &
         0, mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv)
@@ -118,13 +111,14 @@ else
         0, mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv)
 end if
 
-!===================Lagstep mesh%predictor corrector drive========
-prout=0
-time=t0
+
+prout = 0
+time = t0
 lastsilo = t0
-dt=dtinit
+dt = dtinit
+stepcnt = 0
 stepno = 1
-CALL CPU_TIME(ctime0)
+call CPU_TIME(ctime0)
 do while (time <= tf)
     !calculate the FEM elements
     call calculate_finite_elements( &
@@ -178,7 +172,6 @@ do while (time <= tf)
     mesh%uvold=mesh%uv     !store old velocity values
     mesh%vvold=mesh%vv
 
-!     CALL momentum(dt,mesh%uvold,mesh%vvold,mesh%rho05,mesh%pre05,mesh%qq, mesh%nint, mesh%dndx, mesh%dndy,mesh%uv,mesh%vv)
     call momentum_calculation(dt, zantihg, hgregtyp, kappareg, &
         mesh%uvold, mesh%vvold, mesh%xv05, mesh%yv05, mesh%rho05, mesh%pre05, mesh%area, mesh%cc, mesh%qq,  &
         mesh%nint, mesh%dndx, mesh%dndy, mesh%nodelist, mesh%znodbound, mesh%nel, mesh%nnod, mesh%uv, mesh%vv)
@@ -221,19 +214,18 @@ do while (time <= tf)
                 mesh%nodelist, t0, 0, mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv)
         end if
     end if
-    !+++++++++++++++ end Lagstep
 
-    call output(stepcnt, mesh%nel, mesh%nnod, mesh%nodelist, time, stepno, &
-        mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv, mesh%volel, prout)
+    if (time >= 0.20) then
+        call output(stepcnt, mesh%nel, mesh%nnod, mesh%nodelist, time, stepno, &
+            mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv, mesh%volel, prout)
+    endif
     stepno = stepno + 1
     if (stepno == stepcnt .and. stepcnt > 0) stop
 end do
 
 ! Time taken
-CALL CPU_TIME(ctime)
-WRITE (*, *) ' CPU TIME ' , ctime - ctime0, 'seconds'
-! READ (*, *)
+call cpu_time(ctime)
+write(*,*)
+write(*,*) 'Time taken = ' , ctime - ctime0, 'seconds'
 
-
-
-END PROGRAM ChocoboF
+end program ChocoboF

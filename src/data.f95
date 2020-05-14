@@ -55,6 +55,12 @@ end type
 end module
 
 
+module fileunits
+use iso_fortran_env, only: int32
+integer(kind=int32), parameter :: control = 212
+end module
+
+
 module core_input
 use iso_fortran_env, only: int32, real64
 
