@@ -1,20 +1,18 @@
 module sod_init
-use iso_fortran_env, only: int32
-
-use globalconstants, only: dp
+use iso_fortran_env, only: int32, real64
 use geom_data, only: maxreg
 implicit none
 
 ! User inputs
-real (kind=dp), private :: xo(1:maxreg) ! x points region start
-real (kind=dp), private :: yo(1:maxreg) ! y points region start
-real (kind=dp), private :: xf(1:maxreg) !  x points region end
-real (kind=dp), private :: yf(1:maxreg) !  x points region end
+real (kind=real64), private :: xo(1:maxreg) ! x points region start
+real (kind=real64), private :: yo(1:maxreg) ! y points region start
+real (kind=real64), private :: xf(1:maxreg) !  x points region end
+real (kind=real64), private :: yf(1:maxreg) !  x points region end
 integer(kind=int32), private :: meshx(1:maxreg) ! x mesh for each region
 integer(kind=int32), private :: meshy(1:maxreg) ! y mesh for each region
 
-real (kind=dp), private, allocatable :: deltax(:) !  x orig spacing/ region
-real (kind=dp), private, allocatable :: deltay(:) ! y orig spacing/ region
+real (kind=real64), private, allocatable :: deltax(:) !  x orig spacing/ region
+real (kind=real64), private, allocatable :: deltay(:) ! y orig spacing/ region
 integer(kind=int32), private, allocatable :: maxnod(:) ! mx node for each region
 integer(kind=int32), private, allocatable :: maxel(:) ! mx element for each region
 
@@ -65,8 +63,8 @@ subroutine geominit(nel, nnod, nreg)
     maxup = 0
     maxlef = 0
     do ireg = 1,nreg
-        deltax(ireg) = (xf(ireg) - xo(ireg))/real(meshx(ireg), dp)
-        deltay(ireg) = (yf(ireg) - yo(ireg))/real(meshy(ireg), dp)
+        deltax(ireg) = (xf(ireg) - xo(ireg))/real(meshx(ireg), real64)
+        deltay(ireg) = (yf(ireg) - yo(ireg))/real(meshy(ireg), real64)
 
         ! number nodes on each boundary
         uplow(ireg) = meshx(ireg) + 1
@@ -107,7 +105,7 @@ subroutine geomcalc(nreg, nodelist, znodbound, xv, yv)
     integer(kind=int32), intent(in) :: nreg
     integer(kind=int32), dimension(:,:), intent(out) :: nodelist
     integer(kind=int32), dimension(:), intent(out) :: znodbound
-    real(kind=dp), dimension(:), intent(out) :: xv, yv
+    real(kind=real64), dimension(:), intent(out) :: xv, yv
 
     integer(kind=int32) :: low      ! boundary node counters
     integer(kind=int32) :: up
@@ -220,11 +218,11 @@ subroutine init(nel, nodelist, xv, yv, pre, rho, uv, vv)
     implicit none
     integer(kind=int32), intent(in) :: nel
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
-    real(kind=dp), dimension(:), intent(in) :: xv, yv
+    real(kind=real64), dimension(:), intent(in) :: xv, yv
 
-    real(kind=dp), dimension(:), intent(out) :: pre, rho, uv, vv
+    real(kind=real64), dimension(:), intent(out) :: pre, rho, uv, vv
 
-    real (kind=dp) ::   xbubble, ybubble
+    real (kind=real64) ::   xbubble, ybubble
     integer(kind=int32) :: iel
 
 
@@ -240,7 +238,7 @@ subroutine init(nel, nodelist, xv, yv, pre, rho, uv, vv)
         ybubble=yv(nodelist(1,iel))+yv(nodelist(2,iel))  &
                 +yv(nodelist(3,iel))+yv(nodelist(4,iel))
         ybubble=ybubble/four
-        if ((xbubble)**2+(ybubble)**2 <= ((0.4_dp*(yf(1)-yo(1)))**2)+0.0000001_dp) then
+        if ((xbubble)**2+(ybubble)**2 <= ((0.4_real64*(yf(1)-yo(1)))**2)+0.0000001_real64) then
             rho(iel)=one
             pre(iel)=one
         end if

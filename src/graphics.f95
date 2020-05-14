@@ -6,7 +6,7 @@ MODULE GRAPHICS
 ! Mesh movement done using Winslow's equipotential solver
 ! Solution quantities advected using the ideas
 ! of Van Leer and Benson
-use iso_fortran_env, only: int32
+use iso_fortran_env, only: int32, real64
 use globalconstants
 
 
@@ -23,7 +23,7 @@ CHARACTER(LEN=32)::fileseven
 CHARACTER(LEN=32)::fileeight
 CHARACTER(LEN=32)::fileeigtwo
 CHARACTER(LEN=32)::filenine
-REAL(KIND=DP) ::xmidel,ymidel
+REAL(kind=real64) ::xmidel,ymidel
 
 
 
@@ -35,9 +35,9 @@ IMPLICIT NONE
 integer(kind=int32), intent(in) :: stepcnt
 integer(kind=int32), intent(in) :: nel, nnod
 integer(kind=int32), dimension(:,:), intent(in) ::nodelist
-real(kind=dp), intent(in) :: time
+real(kind=real64), intent(in) :: time
 integer(kind=int32), intent(in) :: stepno
-real(kind=dp), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv, volel
+real(kind=real64), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv, volel
 integer(kind=int32), intent(inout) :: prout
 
 integer(kind=int32) :: iel, inod

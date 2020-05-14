@@ -4,6 +4,7 @@ FFLAGS = -O3 -Wunused
 
 all_objects =  \
 	globalconstants.o \
+	memory_manipulation.o \
 	data.o \
 	graphics.o \
 	lagstep_fi.o \
@@ -31,7 +32,7 @@ clean:
 	-rm *.o
 	-rm *.mod
 
-prog.o: data.o globalconstants.o  sod.o lagstep_fi.o graphics.o
+prog.o: memory_manipulation.o globalconstants.o  sod.o lagstep_fi.o graphics.o
 
 lagstep_fi.o: globalconstants.o
 
@@ -40,6 +41,8 @@ graphics.o: data.o globalconstants.o write_tio.o write_silo.o
 sod.o: data.o globalconstants.o
 
 globalconstants.o: globalconstants.f95
+
+memory_manipulation.o: memory_manipulation.f95
 
 write_tio.o: data.o
 

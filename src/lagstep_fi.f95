@@ -3,17 +3,17 @@ module lagrangian_hydro
 ! declared APIs and do not rely on global data. Also, I've given them more
 ! expressive names
 use globalconstants
-use iso_fortran_env, only: int32
+use iso_fortran_env, only: int32, real64
 contains
 
 
 subroutine calculate_mass(volel, rho, nel, massel)
     !calculate element mass=element density* element volume
     implicit none
-    real(kind=dp), dimension(:), intent(in) :: volel, rho
+    real(kind=real64), dimension(:), intent(in) :: volel, rho
     integer(kind=int32), intent(in) :: nel
 
-    real(kind=dp), dimension(:), intent(out) :: massel
+    real(kind=real64), dimension(:), intent(out) :: massel
 
     integer(kind=int32) :: iel
 
@@ -29,16 +29,16 @@ subroutine calculate_total_energy( &
     total_energy, total_ke, total_ie &
 )
     implicit none
-    real (kind=dp), dimension(:), intent(in) ::  energy, rho
-    real (kind=dp), dimension(:), intent(in) ::  u, v, mass
-    real(kind=dp), dimension(:,:), intent(in) :: elwtc
+    real (kind=real64), dimension(:), intent(in) ::  energy, rho
+    real (kind=real64), dimension(:), intent(in) ::  u, v, mass
+    real(kind=real64), dimension(:,:), intent(in) :: elwtc
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
     integer(kind=int32), intent(in) :: nel, zaxis
 
-    real (kind=dp), intent(out):: total_energy, total_ie, total_ke
+    real (kind=real64), intent(out):: total_energy, total_ie, total_ke
 
-    real (kind=dp) :: elenergy
-    real (kind=dp) :: two_pi, tek
+    real (kind=real64) :: elenergy
+    real (kind=real64) :: two_pi, tek
     integer(kind=int32) :: iel, j
 
     if (zaxis == 0) then
@@ -67,20 +67,20 @@ end subroutine calculate_total_energy
 
 subroutine calculate_finite_elements(x, y, nodelist, nel, ni, dndx, dndy, pdndx, pdndy, elwtc)
     implicit none
-    real(kind=dp), dimension(:), intent(in) ::  x, y
+    real(kind=real64), dimension(:), intent(in) ::  x, y
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
     integer(kind=int32), intent(in) :: nel
 
-    real(kind=dp), dimension(:,:), intent(out) :: ni, dndx, dndy
-    real(kind=dp), dimension(:,:), intent(out) :: pdndx, pdndy
-    real(kind=dp), dimension(:,:), intent(out) :: elwtc
+    real(kind=real64), dimension(:,:), intent(out) :: ni, dndx, dndy
+    real(kind=real64), dimension(:,:), intent(out) :: pdndx, pdndy
+    real(kind=real64), dimension(:,:), intent(out) :: elwtc
 
 
-    real(kind=dp) ::jacob
+    real(kind=real64) ::jacob
 
     integer :: iel, jjj
 
-    real(kind=dp) :: a1, a2, a3, b1, b2, b3
+    real(kind=real64) :: a1, a2, a3, b1, b2, b3
 
 
     do iel = 1,nel
@@ -133,14 +133,14 @@ subroutine caluclate_div_v(u, v, pdndx, pdndy, nodelist, nel, divvel)
     ! Not really divergence just a 2d measure of gradient accross cell
     ! Calculates divergence for viscosity
     implicit none
-    real (kind=dp), dimension(:), intent(in) ::  u, v
-    real (kind=dp), dimension(:,:), intent(in) ::  pdndx, pdndy
+    real (kind=real64), dimension(:), intent(in) ::  u, v
+    real (kind=real64), dimension(:,:), intent(in) ::  pdndx, pdndy
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
     integer(kind=int32), intent(in) :: nel
 
-    real (kind=dp), dimension(:), intent(out):: divvel
+    real (kind=real64), dimension(:), intent(out):: divvel
 
-    real (kind=dp) ::dterm
+    real (kind=real64) ::dterm
     integer(kind=int32) :: iel, j
 
     divvel = zero
@@ -159,11 +159,11 @@ subroutine calculate_soundspeed(pressure, rho, gamma, nel, cc)
     !calculate element sound speed
     ! ideal gas equation gamma is defined as parameter at init
     implicit none
-    real(kind=dp), dimension(:), intent(in) :: pressure, rho
-    real(kind=dp), intent(in) :: gamma
+    real(kind=real64), dimension(:), intent(in) :: pressure, rho
+    real(kind=real64), intent(in) :: gamma
     integer(kind=int32) :: nel
 
-    real(kind=dp), dimension(:), intent(out) :: cc
+    real(kind=real64), dimension(:), intent(out) :: cc
 
     integer(kind=int32) :: iel
 
@@ -177,13 +177,13 @@ end subroutine calculate_soundspeed
 subroutine calculate_q(rho, cc, divvel, area, cq, cl, nel, q)
     ! use core_input, only: cq, cl
     implicit none
-    real(kind=dp), dimension(:), intent(in) :: divvel, rho, cc, area
-    real(kind=dp), intent(in) :: cq, cl
+    real(kind=real64), dimension(:), intent(in) :: divvel, rho, cc, area
+    real(kind=real64), intent(in) :: cq, cl
     integer(kind=int32), intent(in) :: nel
 
-    real (kind=dp), dimension(:), intent(out) :: q
+    real (kind=real64), dimension(:), intent(out) :: q
 
-    real(kind=dp) :: dudx
+    real(kind=real64) :: dudx
     integer(kind=int32) :: iel
 
     ! bulk q note our cl is andy's/2
@@ -202,15 +202,15 @@ end subroutine calculate_q
 subroutine get_dt(rho, area, cc, q, time, t0, dtinit, dtmax, growth, nel, dt, dtcontrol)
     use cutoffs, only: dencut
     implicit none
-    real(kind=dp), dimension(:), intent(in) :: rho, area, cc, q
-    real(kind=dp), intent(in) :: time, t0, dtinit, dtmax, growth
+    real(kind=real64), dimension(:), intent(in) :: rho, area, cc, q
+    real(kind=real64), intent(in) :: time, t0, dtinit, dtmax, growth
     integer(kind=int32), intent(in) :: nel
 
-    real(kind=dp), intent(inout) :: dt
+    real(kind=real64), intent(inout) :: dt
     integer(kind=int32), intent(out) :: dtcontrol
 
-    real(kind=dp) :: dtmin, dtold
-    real(kind=dp), dimension(nel) :: deltat
+    real(kind=real64) :: dtmin, dtold
+    real(kind=real64), dimension(nel) :: deltat
     integer(kind=int32) :: iel
 
 
@@ -222,7 +222,7 @@ subroutine get_dt(rho, area, cc, q, time, t0, dtinit, dtmax, growth, nel, dt, dt
         deltat(iel) = area(iel)/max(dencut,((cc(iel)**2)+two*(q(iel)/rho(iel))))
 
         deltat(iel) = (sqrt(deltat(iel)))/two
-        if (area(iel) < 0.0_dp) print *, "negative area in cell", iel, deltat(iel)
+        if (area(iel) < 0.0_real64) print *, "negative area in cell", iel, deltat(iel)
         if (deltat(iel) < dtmin) then
             dtcontrol = iel
             dtmin = deltat(iel)
@@ -235,8 +235,8 @@ subroutine get_dt(rho, area, cc, q, time, t0, dtinit, dtmax, growth, nel, dt, dt
         dt = min(dtmin, dtmax, growth*dtold)
         if (dt == growth*dtold) dtcontrol = -1
     end if
-    if ((time > 0.25_dp - dt) .and. (time < 0.251005_dp)) then
-        dt = 0.25_dp - time
+    if ((time > 0.25_real64 - dt) .and. (time < 0.251005_real64)) then
+        dt = 0.25_real64 - time
     end if
     write(21,*) time, dt, dtmin
 
@@ -246,11 +246,11 @@ end subroutine get_dt
 
 subroutine move_nodes(dt, x, y, u, v, nnod, xout, yout)
     implicit none
-    real(kind=dp), intent(in) :: dt
-    real(kind=dp), dimension(:), intent(in) :: x, y, u, v
+    real(kind=real64), intent(in) :: dt
+    real(kind=real64), dimension(:), intent(in) :: x, y, u, v
     integer(kind=int32), intent(in) :: nnod
 
-    real(kind=dp), dimension(:), intent(out) :: xout, yout
+    real(kind=real64), dimension(:), intent(out) :: xout, yout
 
     integer(kind=int32) :: inod
 
@@ -264,13 +264,13 @@ end subroutine move_nodes
 subroutine calculate_volume(x, y, nodelist, nel, volume, area)
     !calculate element area of quadralateral using jacobian
     implicit none
-    real(kind=dp), dimension(:), intent(in)::  x, y
+    real(kind=real64), dimension(:), intent(in)::  x, y
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
     integer(kind=int32), intent(in) :: nel
 
-    real(kind=dp), dimension(:), intent(out) :: volume, area
+    real(kind=real64), dimension(:), intent(out) :: volume, area
 
-    real(kind=dp) :: a1,a2,a3,b1,b2,b3
+    real(kind=real64) :: a1,a2,a3,b1,b2,b3
 
     integer(kind=int32) :: iel
 
@@ -298,10 +298,10 @@ end subroutine calculate_volume
 
 subroutine calculate_density(mass, volume, nel, rho)
     implicit none
-    real(kind=dp), dimension(:), intent(in)::  mass, volume
+    real(kind=real64), dimension(:), intent(in)::  mass, volume
     integer(kind=int32) :: nel
 
-    real(kind=dp), dimension(:), intent(out):: rho
+    real(kind=real64), dimension(:), intent(out):: rho
 
     integer(kind=int32) :: iel
 
@@ -314,16 +314,16 @@ end subroutine calculate_density
 subroutine calculate_int_divv(zintdivvol, dt, vol, volold, u, v, dndx, dndy, nodelist, nel, intdiv)
     implicit none
     integer(kind=int32), intent(in) :: zintdivvol
-    real(kind=dp), intent(in) :: dt
-    real(kind=dp), dimension(:), intent(in) :: u, v, vol, volold
-    real(kind=dp), dimension(:,:), intent(in) :: dndx, dndy
+    real(kind=real64), intent(in) :: dt
+    real(kind=real64), dimension(:), intent(in) :: u, v, vol, volold
+    real(kind=real64), dimension(:,:), intent(in) :: dndx, dndy
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
     integer(kind=int32), intent(in) :: nel
 
-    real(kind=dp), dimension(:), intent(out) :: intdiv
+    real(kind=real64), dimension(:), intent(out) :: intdiv
 
     integer(kind=int32) :: iel, j
-    real(kind=dp) :: eterm
+    real(kind=real64) :: eterm
 
     if (zintdivvol == 0) then
         intdiv=zero
@@ -344,14 +344,14 @@ end subroutine calculate_int_divv
 
 subroutine calculate_energy(dt, press, visc, mass, ener, intdiv, nel, enout)
     implicit none
-    real(kind=dp), intent(in) :: dt
-    real(kind=dp), dimension(:), intent(in) ::  press, visc
-    real(kind=dp), dimension(:), intent(in) ::  mass
-    real(kind=dp), dimension(:), pointer :: ener
-    real(kind=dp), dimension(:), intent(in) ::  intdiv
+    real(kind=real64), intent(in) :: dt
+    real(kind=real64), dimension(:), intent(in) ::  press, visc
+    real(kind=real64), dimension(:), intent(in) ::  mass
+    real(kind=real64), dimension(:), intent(in) :: ener
+    real(kind=real64), dimension(:), intent(in) ::  intdiv
     integer(kind=int32), intent(in) :: nel
 
-    real (kind=dp), dimension(:), pointer :: enout
+    real (kind=real64), dimension(:), intent(out) :: enout
 
     integer(kind=int32) :: iel
 
@@ -363,11 +363,11 @@ end subroutine calculate_energy
 
 subroutine perfect_gas(energy, rho, gamma, nel, pressure)
     implicit none
-    real(kind=dp), dimension(:), intent(in) ::  energy, rho
-    real(kind=dp), intent(in) :: gamma
+    real(kind=real64), dimension(:), intent(in) ::  energy, rho
+    real(kind=real64), intent(in) :: gamma
     integer(kind=int32), intent(in) :: nel
 
-    real(kind=dp), dimension(:), intent(out) :: pressure
+    real(kind=real64), dimension(:), intent(out) :: pressure
 
     integer(kind=int32) :: iel
 
@@ -388,22 +388,22 @@ subroutine hourglass_filter( &
     !called in momentum subroutine
 
     implicit none
-    real (kind=dp), intent(in), dimension(:) :: u, v, x05, y05, rho, area, cc
-    real (kind=dp), intent(in) :: dt, dtminhg
-    real (kind=dp), intent(in), dimension(:,:) :: dndx, dndy
+    real (kind=real64), intent(in), dimension(:) :: u, v, x05, y05, rho, area, cc
+    real (kind=real64), intent(in) :: dt, dtminhg
+    real (kind=real64), intent(in), dimension(:,:) :: dndx, dndy
     integer(kind=int32), intent(in), dimension(:) :: hgregtyp
-    real (kind=dp), intent(in), dimension(:) :: kappareg
+    real (kind=real64), intent(in), dimension(:) :: kappareg
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
     integer(kind=int32), intent(in) :: nel
 
-    real (kind=dp), intent(inout)::fx(:),fy(:)
+    real (kind=real64), intent(inout)::fx(:),fy(:)
 
 
-    real (kind=dp)  :: ugam, vgam, temp, biibii, xdiff, ydiff
-    real (kind=dp)  :: gam1, gam2, gam3, gam4, qx, qy, kap
+    real (kind=real64)  :: ugam, vgam, temp, biibii, xdiff, ydiff
+    real (kind=real64)  :: gam1, gam2, gam3, gam4, qx, qy, kap
     integer(kind=int32) :: hgtyp, iel
 
-    real(kind=dp) :: a1,a2,a3,b1,b2,b3
+    real(kind=real64) :: a1,a2,a3,b1,b2,b3
 
     ! do ireg=1,nreg   ! loop regions
 
@@ -526,25 +526,25 @@ subroutine momentum_calculation( &
     uout, vout &
 )
     implicit none
-    real(kind=dp), intent(in) :: dt, dtminhg
+    real(kind=real64), intent(in) :: dt, dtminhg
     integer(kind=int32), intent(in) :: zantihg
     integer(kind=int32), dimension(:), intent(in) :: hgregtyp
-    real(kind=dp), dimension(:), intent(in) :: kappareg
-    real(kind=dp), dimension(:), intent(in) :: u, v, x, y, rho, pressure
-    real(kind=dp), dimension(:), intent(in) :: area, cc, q
-    real(kind=dp), dimension(:,:), intent(in) :: nint, dndx, dndy
+    real(kind=real64), dimension(:), intent(in) :: kappareg
+    real(kind=real64), dimension(:), intent(in) :: u, v, x, y, rho, pressure
+    real(kind=real64), dimension(:), intent(in) :: area, cc, q
+    real(kind=real64), dimension(:,:), intent(in) :: nint, dndx, dndy
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
     integer(kind=int32), dimension(:), intent(in) :: znodbound
     integer(kind=int32), intent(in) :: nel, nnod
 
-    real(kind=dp), dimension(:), intent(out) :: uout, vout
+    real(kind=real64), dimension(:), intent(out) :: uout, vout
 
-    real(kind=dp), allocatable :: massnod(:) !node mass
-    real(kind=dp), allocatable :: massj(:) !node mass el
-    real(kind=dp), allocatable :: forcejx(:) !force mass el
-    real(kind=dp), allocatable :: forcejy(:) !force mass el
-    real(kind=dp), allocatable :: forcenodx(:) !force mass x
-    real(kind=dp), allocatable :: forcenody(:) !force mass y
+    real(kind=real64), allocatable :: massnod(:) !node mass
+    real(kind=real64), allocatable :: massj(:) !node mass el
+    real(kind=real64), allocatable :: forcejx(:) !force mass el
+    real(kind=real64), allocatable :: forcejy(:) !force mass el
+    real(kind=real64), allocatable :: forcenodx(:) !force mass x
+    real(kind=real64), allocatable :: forcenody(:) !force mass y
 
     integer(kind=int32) :: iel, inod, j
 

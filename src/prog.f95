@@ -1,7 +1,8 @@
 !===================================================================
 program chocobof
-use iso_fortran_env, only: int32
+use iso_fortran_env, only: int32, real64
 
+use memory_management
 use globalconstants
 use geom_data
 use sod_init
@@ -14,33 +15,67 @@ use write_tio
 use cutoffs, only: dtminhg
 
 implicit none
-real(kind=dp) :: ctime0, ctime
-real(kind=dp) :: dt05
-real(kind=dp) :: totalenergy,totalke,totalie
+real(kind=real64) :: ctime0, ctime
+real(kind=real64) :: dt05
+real(kind=real64) :: totalenergy,totalke,totalie
 integer(kind=int32) :: dtcontrol
 
+integer(kind=int32) :: iel
 
-nadvect=0
+REAL(kind=real64) :: time
+INTEGER(kind=int32) :: prout, stepno
+REAL(kind=real64) :: dt
+
+
+nadvect = 0
 stepcnt = 0
-
-! CALL CPU_TIME(ctime0)
 
 ! Get mesh size
 CALL geominit(nel, nnod, nreg)
 
-! Allocate core mesh arrays
-ALLOCATE (xv(1:nnod), yv(1:nnod))
-ALLOCATE (znodbound(1:nnod))
-ALLOCATE (nodelist(1:4,1:nel))
 !*******************************************
 !initialise scalars, vectors, matrices     *
 !*******************************************
-xv=zero
-yv=zero
-nodelist=0
+call set_data(xv, nnod)
+call set_data(yv, nnod)
+call set_data(xv05, nnod)
+call set_data(yv05, nnod)
 
-! set logicals to 0
-znodbound=0
+call set_data(nodelist, 4, nel)
+call set_data(znodbound, nnod)
+
+call set_data(pre, nel)
+call set_data(rho, nel)
+call set_data(en, nel)
+call set_data(cc, nel)
+call set_data(qq, nel)
+
+call set_data(massel, nel)
+call set_data(area, nel)
+call set_data(volel, nel)
+call set_data(volelold, nel)
+
+call set_data(uv, nnod)
+call set_data(vv, nnod)
+call set_data(uvold, nnod)
+call set_data(vvold, nnod)
+call set_data(uvbar, nnod)
+call set_data(vvbar, nnod)
+
+call set_data(pre05, nel)
+call set_data(rho05, nel)
+call set_data(en05, nel)
+call set_data(volel05, nel)
+
+call set_data(divint, nel)
+call set_data(divvel, nel)
+
+call set_data(nint, 4, nel)
+call set_data(dndx, 4, nel)
+call set_data(dndy, 4, nel)
+call set_data(elwtc, 4, nel)
+call set_data(pdndx, 4, nel)
+call set_data(pdndy, 4, nel)
 
 CALL geomcalc(nreg, nodelist, znodbound, xv, yv)
 
@@ -53,46 +88,6 @@ CALL geomcalc(nreg, nodelist, znodbound, xv, yv)
 
 READ(212,NML=tinp)
 WRITE(*,NML=tinp)
-
-! initialise physical variables
-allocate (pre(1:nel),rho(1:nel),en(1:nel),cc(1:nel),qq(1:nel))
-allocate (massel(1:nel),area(1:nel),volel(1:nel),volelold(1:nel))
-allocate (uv(1:nnod),vv(1:nnod))
-allocate (pre05(1:nel),rho05(1:nel),en05(1:nel),volel05(1:nel))
-allocate (divint(1:nel),divvel(1:nel))
-allocate (uvold(1:nnod),vvold(1:nnod),uvbar(1:nnod),vvbar(1:nnod))
-allocate (xv05(1:nnod),yv05(1:nnod))
-allocate (nint(1:4,1:nel),dndx(1:4,1:nel),dndy(1:4,1:nel))
-allocate (elwtc(1:4,1:nel))
-allocate (pdndx(1:4,1:nel),pdndy(1:4,1:nel))
-
-divint=zero
-divvel=zero
-en=zero
-cc=zero
-qq=zero
-massel=zero
-volel=zero
-volelold=zero
-area=zero
-
-!=====initialise prdcor var
-pre05=zero
-rho05=zero
-en05=zero
-volel05=zero
-xv05=zero
-yv05=zero
-uvold=zero
-vvold=zero
-uvbar=zero
-vvbar=zero
-
-!=initialise fem
-elwtc=zero
-nint=zero
-dndx=zero
-dndy=zero
 
 CALL init(nel, nodelist, xv, yv, pre, rho, uv, vv)
 

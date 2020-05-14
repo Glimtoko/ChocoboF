@@ -1,14 +1,15 @@
 
 ! ===================================================================
 MODULE geom_data
+use iso_fortran_env, only: int32, real64
 !constructing problem geometry, x,y vectors, lement-node array.
 USE GlobalConstants
 
 IMPLICIT NONE
 INTEGER, PUBLIC, PARAMETER :: maxreg=10
 
-REAL (KIND=DP), PUBLIC, ALLOCATABLE :: xv(:) ! nodal x points node order
-REAL (KIND=DP), PUBLIC, ALLOCATABLE :: yv(:) ! nodal y points node order
+REAL (kind=real64), PUBLIC, ALLOCATABLE :: xv(:) ! nodal x points node order
+REAL (kind=real64), PUBLIC, ALLOCATABLE :: yv(:) ! nodal y points node order
 
 !     .. Module Scalars ..
 integer, public    :: nreg

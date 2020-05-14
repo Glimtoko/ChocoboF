@@ -1,5 +1,5 @@
 module write_silo
-use iso_fortran_env, only: int32
+use iso_fortran_env, only: int32, real64
 use globalconstants
 
 implicit none
@@ -15,9 +15,9 @@ integer(kind=int32), intent(in) :: state
 character(len=*), intent(in) :: name
 integer(kind=int32), intent(in) :: nel, nnod
 integer(kind=int32), dimension(:,:), intent(in) ::nodelist
-real(kind=dp), intent(in) :: time
+real(kind=real64), intent(in) :: time
 integer(kind=int32), intent(in) :: stepno
-real(kind=dp), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv
+real(kind=real64), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv
 
 
 ! Filename
