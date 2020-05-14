@@ -1,6 +1,6 @@
 module sod_init
 use iso_fortran_env, only: int32, real64
-use geom_data, only: maxreg
+use core_input, only: maxreg
 implicit none
 
 ! User inputs
@@ -98,7 +98,7 @@ END SUBROUTINE geominit
 
 ! ===================================================================
 subroutine geomcalc(nreg, nodelist, znodbound, xv, yv)
-    use globalconstants
+
     ! calculates x array in terms of nodes
     implicit none
 
@@ -214,7 +214,7 @@ end subroutine geomcalc
 
 
 subroutine init(nel, nodelist, xv, yv, pre, rho, uv, vv)
-    use globalconstants
+
     implicit none
     integer(kind=int32), intent(in) :: nel
     integer(kind=int32), dimension(:,:), intent(in) :: nodelist
@@ -227,20 +227,20 @@ subroutine init(nel, nodelist, xv, yv, pre, rho, uv, vv)
 
 
     ! sod circle quarter
-    pre=one/ten
-    rho=one/eight
-    uv=zero
-    vv=zero
+    pre = 1.0_real64/10.0_real64
+    rho = 1.0_real64/8.0_real64
+!     uv=zero
+!     vv=zero
     do iel=1,nel
         xbubble=xv(nodelist(1,iel))+xv(nodelist(2,iel))  &
                 +xv(nodelist(3,iel))+xv(nodelist(4,iel))
-        xbubble=xbubble/four
+        xbubble=xbubble/4.0_real64
         ybubble=yv(nodelist(1,iel))+yv(nodelist(2,iel))  &
                 +yv(nodelist(3,iel))+yv(nodelist(4,iel))
-        ybubble=ybubble/four
+        ybubble=ybubble/4.0_real64
         if ((xbubble)**2+(ybubble)**2 <= ((0.4_real64*(yf(1)-yo(1)))**2)+0.0000001_real64) then
-            rho(iel)=one
-            pre(iel)=one
+            rho(iel) = 1.0_real64
+            pre(iel) = 1.0_real64
         end if
     end do
 

@@ -1,6 +1,6 @@
 module write_tio
 use iso_fortran_env, only: int32, real64
-use globalconstants
+
 use core_input
 
 use typhonio

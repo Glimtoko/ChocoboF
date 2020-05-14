@@ -7,7 +7,7 @@ MODULE GRAPHICS
 ! Solution quantities advected using the ideas
 ! of Van Leer and Benson
 use iso_fortran_env, only: int32, real64
-use globalconstants
+
 
 
 IMPLICIT NONE

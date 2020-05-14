@@ -1,6 +1,6 @@
 module write_silo
 use iso_fortran_env, only: int32, real64
-use globalconstants
+
 
 implicit none
 

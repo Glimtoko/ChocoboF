@@ -3,7 +3,7 @@
 MODULE geom_data
 use iso_fortran_env, only: int32, real64
 !constructing problem geometry, x,y vectors, lement-node array.
-USE GlobalConstants
+
 
 IMPLICIT NONE
 INTEGER, PUBLIC, PARAMETER :: maxreg=10

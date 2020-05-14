@@ -1,12 +1,3 @@
-module geom_data
-use iso_fortran_env, only: int32, real64
-use globalconstants
-implicit none
-
-integer, public, parameter :: maxreg=10
-end module geom_data
-
-
 module mesh_mod
 use iso_fortran_env, only: int32, real64
 type :: MeshT
@@ -64,47 +55,62 @@ end type
 end module
 
 
-module cutoffs
-use globalConstants
-! cut off parameters
-REAL(kind=real64), PUBLIC, PARAMETER :: mindt=1.00000000000e-4
-REAL(kind=real64), PUBLIC, PARAMETER ::  zcut=1.00000000000e-8
-REAL(kind=real64), PUBLIC, PARAMETER :: dtminhg=0.000000008
-REAL(kind=real64), PUBLIC, PARAMETER ::  zerocut=1.0000000e-18
-! stop divide by 0's
-REAL(kind=real64), PUBLIC, PARAMETER :: dencut=1.000000000e-6
-end module cutoffs
-
-
 module core_input
-use globalConstants
-use geom_data
-REAL(kind=real64), PUBLIC:: gamma
-! artificial viscosity
-REAL(kind=real64), PUBLIC:: cq
-REAL(kind=real64), PUBLIC:: cl
-!max time step
-REAL(kind=real64), PUBLIC:: maxallstep
-! initial time step
-REAL(kind=real64), PUBLIC:: dtinit
-INTEGER, PUBLIC :: dtoption ! timestep option
-! time step groth factor
-REAL(kind=real64), PUBLIC :: t0  !initial time
-REAL(kind=real64), PUBLIC :: tf  !final time
-REAL(kind=real64), PUBLIC :: growth
-! if 0 cartesian 1 axisymmetric
-INTEGER, PUBLIC :: zaxis
-INTEGER, PUBLIC :: zintdivvol   ! 0 not vol 1 indiv volume change
-INTEGER, PUBLIC :: avtype ! type of artificial viscosity
-INTEGER, PUBLIC :: zantihg  ! if 0 no hourglassing if 1 hourglassing
-INTEGER, PUBLIC :: hgregtyp(1:maxreg)
-REAL(kind=real64), PUBLIC :: kappareg(1:maxreg)
+use iso_fortran_env, only: int32, real64
 
-real(kind=real64) :: dtsilo, lastsilo
-INTEGER:: nadvect, stepcnt, h5type
+
+! Maximum number of regions allowed
+integer(kind=int32), public, parameter :: maxreg=10
+
+real(kind=real64), public:: gamma
+
+! artificial viscosity
+real(kind=real64), public:: cq
+real(kind=real64), public:: cl
+
+!max time step
+real(kind=real64), public:: maxallstep
+
+! initial time step
+real(kind=real64), public:: dtinit
+
+! timestep option
+integer, public :: dtoption
+
+! Problem time extent
+real(kind=real64), public :: t0  !initial time
+real(kind=real64), public :: tf  !final time
+
+! time step growth factor
+real(kind=real64), public :: growth
+
+! if 0 cartesian 1 axisymmetric
+integer(kind=int32), public :: zaxis
+
+! 0 not vol 1 indiv volume change
+integer(kind=int32), public :: zintdivvol
+
+! type of artificial viscosity
+integer(kind=int32), public :: avtype
+
+! if 0 no hourglassing if 1 hourglassing
+integer(kind=int32), public :: zantihg
+
+! Anti-hourglass filter type
+integer(kind=int32), public :: hgregtyp(1:maxreg)
+
+! Kappa for A-H filter
+real(kind=real64), public :: kappareg(1:maxreg)
+
+! SILO/TIO output controls
+real(kind=real64) :: dtsilo
+integer(kind=int32) :: h5type
 logical :: tioonefile
 
-NAMELIST /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
+! Maximum number of timesteps - used for debugging
+integer(kind=int32) :: stepcnt
+
+namelist /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
         zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type,tioonefile
 
 end module core_input

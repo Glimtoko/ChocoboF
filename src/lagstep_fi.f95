@@ -2,8 +2,13 @@ module lagrangian_hydro
 ! This is a copy of the lagstep module, but all routines in it have fully
 ! declared APIs and do not rely on global data. Also, I've given them more
 ! expressive names
-use globalconstants
+
 use iso_fortran_env, only: int32, real64
+
+! Cut-off values
+real(kind=real64), public, parameter :: dtminhg = 0.000000008
+real(kind=real64), public, parameter :: dencut = 1.000000000e-6
+
 contains
 
 
@@ -41,20 +46,22 @@ subroutine calculate_total_energy( &
     real (kind=real64) :: two_pi, tek
     integer(kind=int32) :: iel, j
 
+    real(kind=real64), parameter ::pi = 3.14159265358979324_real64
+
     if (zaxis == 0) then
-        two_pi = one
+        two_pi = 1.0_real64
     else if (zaxis == 1) then
-        two_pi = twopi
+        two_pi = 2.0_real64 * pi
     end if
 
-    total_energy = zero
-    total_ke = zero
-    total_ie = zero
+    total_energy = 0.0_real64
+    total_ke = 0.0_real64
+    total_ie = 0.0_real64
     do iel = 1,nel
-        tek = zero
+        tek = 0.0_real64
 
         do j = 1,4
-            tek =  tek + half*rho(iel)*elwtc(j,iel)*   &
+            tek =  tek + 0.5_real64*rho(iel)*elwtc(j,iel)*   &
                    (u(nodelist(j,iel))**2 + v(nodelist(j,iel))**2)*two_pi
         end do
         elenergy = mass(iel)*energy(iel)*two_pi + tek
@@ -84,23 +91,23 @@ subroutine calculate_finite_elements(x, y, nodelist, nel, ni, dndx, dndy, pdndx,
 
 
     do iel = 1,nel
-        a1 = quarter*(-x(nodelist(1,iel))+x(nodelist(2,iel))   &
+        a1 = 0.25_real64*(-x(nodelist(1,iel))+x(nodelist(2,iel))   &
                     +x(nodelist(3,iel))-x(nodelist(4,iel)))
-        a2 = quarter*(x(nodelist(1,iel))-x(nodelist(2,iel))   &
+        a2 = 0.25_real64*(x(nodelist(1,iel))-x(nodelist(2,iel))   &
                     +x(nodelist(3,iel))-x(nodelist(4,iel)))
-        a3 = quarter*(-x(nodelist(1,iel))-x(nodelist(2,iel))   &
+        a3 = 0.25_real64*(-x(nodelist(1,iel))-x(nodelist(2,iel))   &
                     +x(nodelist(3,iel))+x(nodelist(4,iel)))
-        b1 = quarter*(-y(nodelist(1,iel))+y(nodelist(2,iel))   &
+        b1 = 0.25_real64*(-y(nodelist(1,iel))+y(nodelist(2,iel))   &
                     +y(nodelist(3,iel))-y(nodelist(4,iel)))
-        b2 = quarter*(y(nodelist(1,iel))-y(nodelist(2,iel))   &
+        b2 = 0.25_real64*(y(nodelist(1,iel))-y(nodelist(2,iel))   &
                     +y(nodelist(3,iel))-y(nodelist(4,iel)))
-        b3 = quarter*(-y(nodelist(1,iel))-y(nodelist(2,iel))   &
+        b3 = 0.25_real64*(-y(nodelist(1,iel))-y(nodelist(2,iel))   &
                     +y(nodelist(3,iel))+y(nodelist(4,iel)))
         ! for momentum
-        ni(1,iel) = ((three*b3-b2)*(three*a1-a2)-(three*a3-a2)*(three*b1-b2))/nine
-        ni(2,iel) = ((three*b3+b2)*(three*a1-a2)-(three*a3+a2)*(three*b1-b2))/nine
-        ni(3,iel) = ((three*b3+b2)*(three*a1+a2)-(three*a3+a2)*(three*b1+b2))/nine
-        ni(4,iel) = ((three*b3-b2)*(three*a1+a2)-(three*a3-a2)*(three*b1+b2))/nine
+        ni(1,iel) = ((3.0_real64*b3-b2)*(3.0_real64*a1-a2)-(3.0_real64*a3-a2)*(3.0_real64*b1-b2))/9.0_real64
+        ni(2,iel) = ((3.0_real64*b3+b2)*(3.0_real64*a1-a2)-(3.0_real64*a3+a2)*(3.0_real64*b1-b2))/9.0_real64
+        ni(3,iel) = ((3.0_real64*b3+b2)*(3.0_real64*a1+a2)-(3.0_real64*a3+a2)*(3.0_real64*b1+b2))/9.0_real64
+        ni(4,iel) = ((3.0_real64*b3-b2)*(3.0_real64*a1+a2)-(3.0_real64*a3-a2)*(3.0_real64*b1+b2))/9.0_real64
 
         ! integrated ddndx's for intdiv and energy
         dndx(1,iel) = -b3+b1
@@ -116,8 +123,8 @@ subroutine calculate_finite_elements(x, y, nodelist, nel, ni, dndx, dndy, pdndx,
         ! jacobian and ddndx's for div and viscosity
         jacob = a1*b3-a3*b1
         do jjj = 1,4
-            pdndx(jjj,iel) = quarter*dndx(jjj,iel)/jacob
-            pdndy(jjj,iel) = quarter*dndy(jjj,iel)/jacob
+            pdndx(jjj,iel) = 0.25_real64*dndx(jjj,iel)/jacob
+            pdndy(jjj,iel) = 0.25_real64*dndy(jjj,iel)/jacob
         end do
 
         ! calculate elwtc for sale integral x over volume
@@ -143,7 +150,7 @@ subroutine caluclate_div_v(u, v, pdndx, pdndy, nodelist, nel, divvel)
     real (kind=real64) ::dterm
     integer(kind=int32) :: iel, j
 
-    divvel = zero
+    divvel = 0.0_real64
     do iel = 1,nel
         do j = 1,4
             dterm = u(nodelist(j,iel))*pdndx(j,iel) + v(nodelist(j,iel))*pdndy(j,iel)
@@ -188,19 +195,18 @@ subroutine calculate_q(rho, cc, divvel, area, cq, cl, nel, q)
 
     ! bulk q note our cl is andy's/2
     do iel = 1,nel
-        if(divvel(iel) < zero) then
+        if(divvel(iel) < 0.0_real64) then
             dudx = sqrt(area(iel))*divvel(iel)
             q(iel) = (cq*rho(iel)*(dudx)**2) +    &
                 (cl*rho(iel)*cc(iel)*abs(dudx))
         else
-            q(iel) = zero
+            q(iel) = 0.0_real64
         end if
     end do
 end subroutine calculate_q
 
 
 subroutine get_dt(rho, area, cc, q, time, t0, dtinit, dtmax, growth, nel, dt, dtcontrol)
-    use cutoffs, only: dencut
     implicit none
     real(kind=real64), dimension(:), intent(in) :: rho, area, cc, q
     real(kind=real64), intent(in) :: time, t0, dtinit, dtmax, growth
@@ -214,14 +220,14 @@ subroutine get_dt(rho, area, cc, q, time, t0, dtinit, dtmax, growth, nel, dt, dt
     integer(kind=int32) :: iel
 
 
-    dtmin = one
+    dtmin = 1.0_real64
     dtold = dt
 
     dtcontrol = 0
     do iel=1,nel
-        deltat(iel) = area(iel)/max(dencut,((cc(iel)**2)+two*(q(iel)/rho(iel))))
+        deltat(iel) = area(iel)/max(dencut,((cc(iel)**2)+2.0_real64*(q(iel)/rho(iel))))
 
-        deltat(iel) = (sqrt(deltat(iel)))/two
+        deltat(iel) = (sqrt(deltat(iel)))/2.0_real64
         if (area(iel) < 0.0_real64) print *, "negative area in cell", iel, deltat(iel)
         if (deltat(iel) < dtmin) then
             dtcontrol = iel
@@ -275,20 +281,20 @@ subroutine calculate_volume(x, y, nodelist, nel, volume, area)
     integer(kind=int32) :: iel
 
     do iel = 1,nel
-        a1 = quarter*(-x(nodelist(1,iel))+x(nodelist(2,iel))   &
+        a1 = 0.25_real64*(-x(nodelist(1,iel))+x(nodelist(2,iel))   &
                       +x(nodelist(3,iel))-x(nodelist(4,iel)))
-        a2 = quarter*(x(nodelist(1,iel))-x(nodelist(2,iel))   &
+        a2 = 0.25_real64*(x(nodelist(1,iel))-x(nodelist(2,iel))   &
                       +x(nodelist(3,iel))-x(nodelist(4,iel)))
-        a3 = quarter*(-x(nodelist(1,iel))-x(nodelist(2,iel))   &
+        a3 = 0.25_real64*(-x(nodelist(1,iel))-x(nodelist(2,iel))   &
                       +x(nodelist(3,iel))+x(nodelist(4,iel)))
-        b1 = quarter*(-y(nodelist(1,iel))+y(nodelist(2,iel))   &
+        b1 = 0.25_real64*(-y(nodelist(1,iel))+y(nodelist(2,iel))   &
                       +y(nodelist(3,iel))-y(nodelist(4,iel)))
-        b2 = quarter*(y(nodelist(1,iel))-y(nodelist(2,iel))   &
+        b2 = 0.25_real64*(y(nodelist(1,iel))-y(nodelist(2,iel))   &
                       +y(nodelist(3,iel))-y(nodelist(4,iel)))
-        b3 = quarter*(-y(nodelist(1,iel))-y(nodelist(2,iel))   &
+        b3 = 0.25_real64*(-y(nodelist(1,iel))-y(nodelist(2,iel))   &
                       +y(nodelist(3,iel))+y(nodelist(4,iel)))
 
-        volume(iel) = four*(a1*b3 - a3*b1)
+        volume(iel) = 4.0_real64*(a1*b3 - a3*b1)
         area(iel) = volume(iel)
     end do
 
@@ -326,7 +332,7 @@ subroutine calculate_int_divv(zintdivvol, dt, vol, volold, u, v, dndx, dndy, nod
     real(kind=real64) :: eterm
 
     if (zintdivvol == 0) then
-        intdiv=zero
+        intdiv=0.0_real64
         do iel=1, nel
             do j=1, 4
                 eterm = u(nodelist(j,iel))*dndx(j,iel)         &
@@ -372,14 +378,14 @@ subroutine perfect_gas(energy, rho, gamma, nel, pressure)
     integer(kind=int32) :: iel
 
     do iel=1,nel
-        pressure(iel) = (gamma - one)*rho(iel)*energy(iel)
+        pressure(iel) = (gamma - 1.0_real64)*rho(iel)*energy(iel)
     end do
 end subroutine perfect_gas
 
 
 subroutine hourglass_filter( &
     u, v, x05, y05, rho, area, cc, &
-    dt, dtminhg, dndx, dndy, hgregtyp, kappareg, nodelist, nel, &
+    dt, dndx, dndy, hgregtyp, kappareg, nodelist, nel, &
     fx, fy &
 )
 
@@ -389,7 +395,7 @@ subroutine hourglass_filter( &
 
     implicit none
     real (kind=real64), intent(in), dimension(:) :: u, v, x05, y05, rho, area, cc
-    real (kind=real64), intent(in) :: dt, dtminhg
+    real (kind=real64), intent(in) :: dt
     real (kind=real64), intent(in), dimension(:,:) :: dndx, dndy
     integer(kind=int32), intent(in), dimension(:) :: hgregtyp
     real (kind=real64), intent(in), dimension(:) :: kappareg
@@ -467,34 +473,34 @@ subroutine hourglass_filter( &
         ! by belystchko and flanagan
             do iel=1, nel
 
-            a1=quarter*(-x05(nodelist(1,iel))+x05(nodelist(2,iel))   &
+            a1=0.25_real64*(-x05(nodelist(1,iel))+x05(nodelist(2,iel))   &
                     +x05(nodelist(3,iel))-x05(nodelist(4,iel)))
-            a2=quarter*(x05(nodelist(1,iel))-x05(nodelist(2,iel))   &
+            a2=0.25_real64*(x05(nodelist(1,iel))-x05(nodelist(2,iel))   &
                     +x05(nodelist(3,iel))-x05(nodelist(4,iel)))
-            a3=quarter*(-x05(nodelist(1,iel))-x05(nodelist(2,iel))   &
+            a3=0.25_real64*(-x05(nodelist(1,iel))-x05(nodelist(2,iel))   &
                     +x05(nodelist(3,iel))+x05(nodelist(4,iel)))
-            b1=quarter*(-y05(nodelist(1,iel))+y05(nodelist(2,iel))   &
+            b1=0.25_real64*(-y05(nodelist(1,iel))+y05(nodelist(2,iel))   &
                     +y05(nodelist(3,iel))-y05(nodelist(4,iel)))
-            b2=quarter*(y05(nodelist(1,iel))-y05(nodelist(2,iel))   &
+            b2=0.25_real64*(y05(nodelist(1,iel))-y05(nodelist(2,iel))   &
                     +y05(nodelist(3,iel))-y05(nodelist(4,iel)))
-            b3=quarter*(-y05(nodelist(1,iel))-y05(nodelist(2,iel))   &
+            b3=0.25_real64*(-y05(nodelist(1,iel))-y05(nodelist(2,iel))   &
                     +y05(nodelist(3,iel))+y05(nodelist(4,iel)))
-            biibii=four*(b3**2+b1**2+a3**2+a1**2)
+            biibii=4.0_real64*(b3**2+b1**2+a3**2+a1**2)
             xdiff=x05(nodelist(1,iel))-x05(nodelist(2,iel))    &
                     +x05(nodelist(3,iel))-x05(nodelist(4,iel))
             ydiff=y05(nodelist(1,iel))-y05(nodelist(2,iel))    &
                     +y05(nodelist(3,iel))-y05(nodelist(4,iel))
-            gam1= half-half*(dndx(1,iel)*xdiff+dndy(1,iel)*ydiff)/area(iel)
-            gam2=-half-half*(dndx(2,iel)*xdiff+dndy(2,iel)*ydiff)/area(iel)
-            gam3= half-half*(dndx(3,iel)*xdiff+dndy(3,iel)*ydiff)/area(iel)
-            gam4=-half-half*(dndx(4,iel)*xdiff+dndy(4,iel)*ydiff)/area(iel)
+            gam1= 0.5_real64-0.5_real64*(dndx(1,iel)*xdiff+dndy(1,iel)*ydiff)/area(iel)
+            gam2=-0.5_real64-0.5_real64*(dndx(2,iel)*xdiff+dndy(2,iel)*ydiff)/area(iel)
+            gam3= 0.5_real64-0.5_real64*(dndx(3,iel)*xdiff+dndy(3,iel)*ydiff)/area(iel)
+            gam4=-0.5_real64-0.5_real64*(dndx(4,iel)*xdiff+dndy(4,iel)*ydiff)/area(iel)
 
             ! qx qy different forms according to
             ! whether artificial damping or stiffness are required
 
             kap=kappareg(1)
-            qx= -kap*rho(iel)*cc(iel)*sqrt(biibii)/ten  &!damping
-                -half*kap*rho(iel)*dt*(cc(iel)**2)*biibii/area(iel) !stiffness
+            qx= -kap*rho(iel)*cc(iel)*sqrt(biibii)/10.0_real64  &!damping
+                -0.5_real64*kap*rho(iel)*dt*(cc(iel)**2)*biibii/area(iel) !stiffness
 
             qy= qx*(gam1*v(nodelist(1,iel))+gam2*v(nodelist(2,iel))  &
                     +gam3*v(nodelist(3,iel))+gam4*v(nodelist(4,iel)))
@@ -518,15 +524,15 @@ end subroutine hourglass_filter
 
 
 subroutine momentum_calculation( &
-    dt, dtminhg, &
+    dt, &
     zantihg, hgregtyp, kappareg, &
-    u, v, x, y, rho, pressure, area, cc, q,  &  ! X, Y are half timestep
+    u, v, x, y, rho, pressure, area, cc, q,  &  ! X, Y are 0.5_real64 timestep
     nint, dndx, dndy, &
     nodelist, znodbound, nel, nnod, &
     uout, vout &
 )
     implicit none
-    real(kind=real64), intent(in) :: dt, dtminhg
+    real(kind=real64), intent(in) :: dt
     integer(kind=int32), intent(in) :: zantihg
     integer(kind=int32), dimension(:), intent(in) :: hgregtyp
     real(kind=real64), dimension(:), intent(in) :: kappareg
@@ -553,9 +559,9 @@ subroutine momentum_calculation( &
     allocate(forcenodx(nnod))
     allocate(forcenody(nnod))
 
-    massnod=zero
-    forcenodx=zero
-    forcenody=zero
+    massnod=0.0_real64
+    forcenodx=0.0_real64
+    forcenody=0.0_real64
     do inod=1,nnod
         do iel=1,nel
             do j=1,4
@@ -573,7 +579,7 @@ subroutine momentum_calculation( &
     if (zantihg == 1) then
         call hourglass_filter( &
             u, v, x, y, rho, area, cc, &
-            dt, dtminhg, dndx, dndy, hgregtyp, kappareg, nodelist, nel, &
+            dt, dndx, dndy, hgregtyp, kappareg, nodelist, nel, &
             forcenodx, forcenody &
         )
 

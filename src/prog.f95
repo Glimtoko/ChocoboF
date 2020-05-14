@@ -5,15 +5,15 @@ use iso_fortran_env, only: int32, real64
 use memory_management
 use mesh_mod
 
-use globalconstants
-use geom_data
+
+! use geom_data
 use sod_init
 use lagrangian_hydro
 use core_input
 use graphics
 use write_silo
 use write_tio
-use cutoffs, only: dtminhg
+! use cutoffs, only: dtminhg
 
 implicit none
 real(kind=real64) :: ctime0, ctime
@@ -27,9 +27,11 @@ REAL(kind=real64) :: time
 INTEGER(kind=int32) :: prout, stepno
 REAL(kind=real64) :: dt
 
+integer(kind=int32) :: lastsilo
+
 type(MeshT) :: mesh
 
-nadvect = 0
+
 stepcnt = 0
 
 ! Get mesh size
@@ -99,10 +101,9 @@ call calculate_mass(mesh%volel, mesh%rho, mesh%nel, mesh%massel)
 
 
 Do iel=1,mesh%nel
-    mesh%en(iel)=mesh%pre(iel)/((gamma-one)*mesh%rho(iel))
+    mesh%en(iel)=mesh%pre(iel)/((gamma-1.0_real64)*mesh%rho(iel))
 END DO
 
-! CALL totalen(en,mesh%rho,mesh%uv,mesh%vv,totalenergy,totalke,totalie)
 call calculate_total_energy( &
     mesh%en, mesh%rho, mesh%uv, mesh%vv, mesh%massel, mesh%elwtc, mesh%nodelist, mesh%nel, zaxis, &
     totalenergy, totalke, totalie &
@@ -148,7 +149,7 @@ do while (time <= tf)
     WRITE(*,"(i4, 2x, f10.7, 2x, f15.12, 2x, i4)") stepno,time,dt, dtcontrol
 
     !calculate 1/2 time step nodal positions
-    dt05 = half * dt
+    dt05 = 0.5_real64 * dt
     call move_nodes(dt05, mesh%xv, mesh%yv, mesh%uv, mesh%vv, mesh%nnod, mesh%xv05, mesh%yv05)
 
     !calculate the FEM elements
@@ -178,12 +179,12 @@ do while (time <= tf)
     mesh%vvold=mesh%vv
 
 !     CALL momentum(dt,mesh%uvold,mesh%vvold,mesh%rho05,mesh%pre05,mesh%qq, mesh%nint, mesh%dndx, mesh%dndy,mesh%uv,mesh%vv)
-    call momentum_calculation(dt, dtminhg, zantihg, hgregtyp, kappareg, &
+    call momentum_calculation(dt, zantihg, hgregtyp, kappareg, &
         mesh%uvold, mesh%vvold, mesh%xv05, mesh%yv05, mesh%rho05, mesh%pre05, mesh%area, mesh%cc, mesh%qq,  &
         mesh%nint, mesh%dndx, mesh%dndy, mesh%nodelist, mesh%znodbound, mesh%nel, mesh%nnod, mesh%uv, mesh%vv)
 
-    mesh%uvbar=half*(mesh%uvold+mesh%uv) !calculate an average
-    mesh%vvbar=half*(mesh%vvold+mesh%vv)
+    mesh%uvbar=0.5_real64*(mesh%uvold+mesh%uv) !calculate an average
+    mesh%vvbar=0.5_real64*(mesh%vvold+mesh%vv)
 
     !calculate full time step nodal positions
     call move_nodes(dt, mesh%xv, mesh%yv, mesh%uvbar, mesh%vvbar, mesh%nnod, mesh%xv, mesh%yv)
