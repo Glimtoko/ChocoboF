@@ -4,121 +4,64 @@ use globalconstants
 implicit none
 
 integer, public, parameter :: maxreg=10
-
 end module geom_data
 
 
 module mesh_mod
-    use iso_fortran_env, only: int32, real64
-    type :: mesh
-        integer(kind=int32) :: nreg
-        integer(kind=int32) :: nel    !max no. elements
-        integer(kind=int32) :: nnod  !max no. nodes
+use iso_fortran_env, only: int32, real64
+type :: MeshT
+    integer(kind=int32) :: nel  ! Number of cells
+    integer(kind=int32) :: nnod ! Number of nodes
+    integer(kind=int32) :: nreg ! Number of regions
 
-        ! "logicals" - actually integers
-        integer(kind=int32), allocatable :: znodbound(:)
+    ! "logicals" - actually integers
+    integer(kind=int32), allocatable :: znodbound(:)
 
-        !       ..arrays..
-        integer(kind=int32), dimension(:,:), allocatable :: nodelist !element-node array
-        real(kind=real64), dimension(:), allocatable :: xv ! nodal x points node order
-        real(kind=real64), dimension(:), allocatable :: yv ! nodal y points node order
-        real(kind=real64), dimension(:), allocatable :: pre !element pressures
-        real(kind=real64), dimension(:), allocatable :: rho !element density
-        real(kind=real64), dimension(:), allocatable :: en !element energy
-        real(kind=real64), dimension(:), allocatable :: cc !element sound speed
-        real(kind=real64), dimension(:), allocatable :: qq !element artificial viscosity
-        real(kind=real64), dimension(:), allocatable :: massel !element mass
-        real(kind=real64), dimension(:), allocatable :: volel !element volume
-        real(kind=real64), dimension(:), allocatable :: volelold !element old vol
-        real(kind=real64), dimension(:), allocatable :: area  !element area
-        real(kind=real64), dimension(:), allocatable :: uv !node x velocity
-        real(kind=real64), dimension(:), allocatable :: vv!node y velocity
+    !       ..arrays..
+    integer(kind=int32), dimension(:,:), allocatable :: nodelist !element-node array
+    real(kind=real64), dimension(:), allocatable :: xv ! nodal x points node order
+    real(kind=real64), dimension(:), allocatable :: yv ! nodal y points node order
+    real(kind=real64), dimension(:), allocatable :: pre !element pressures
+    real(kind=real64), dimension(:), allocatable :: rho !element density
+    real(kind=real64), dimension(:), allocatable :: en !element energy
+    real(kind=real64), dimension(:), allocatable :: cc !element sound speed
+    real(kind=real64), dimension(:), allocatable :: qq !element artificial viscosity
+    real(kind=real64), dimension(:), allocatable :: massel !element mass
+    real(kind=real64), dimension(:), allocatable :: volel !element volume
+    real(kind=real64), dimension(:), allocatable :: volelold !element old vol
+    real(kind=real64), dimension(:), allocatable :: area  !element area
+    real(kind=real64), dimension(:), allocatable :: uv !node x velocity
+    real(kind=real64), dimension(:), allocatable :: vv!node y velocity
 
-        real(kind=real64), dimension(:), allocatable :: uvold !old x velocity
-        real(kind=real64), dimension(:), allocatable :: vvold !old y velocity
-        real(kind=real64), dimension(:), allocatable :: uvbar !av x velocity
-        real(kind=real64), dimension(:), allocatable :: vvbar !av y velocity
-        real(kind=real64), dimension(:), allocatable :: xv05 !1/2dt node x
-        real(kind=real64), dimension(:), allocatable :: yv05 !1/2dt node y
-        real(kind=real64), dimension(:), allocatable :: pre05 !1/2dt pressures
-        real(kind=real64), dimension(:), allocatable :: rho05 !1/2dt density
-        real(kind=real64), dimension(:), allocatable :: en05 !1/2dt energy
-        real(kind=real64), dimension(:), allocatable :: volel05 !1/2dt volume
-        real(kind=real64), dimension(:), allocatable :: divint !int divergence v
-        real(kind=real64), dimension(:), allocatable :: divvel !int divergence v
-        real(kind=real64), dimension(:), allocatable :: dxtb,dxlr
-        real(kind=real64), dimension(:), allocatable :: dudxt,dudxb,dudxl,dudxr
-        real(kind=real64), dimension(:), allocatable :: phib, phit, phil, phir
+    real(kind=real64), dimension(:), allocatable :: uvold !old x velocity
+    real(kind=real64), dimension(:), allocatable :: vvold !old y velocity
+    real(kind=real64), dimension(:), allocatable :: uvbar !av x velocity
+    real(kind=real64), dimension(:), allocatable :: vvbar !av y velocity
+    real(kind=real64), dimension(:), allocatable :: xv05 !1/2dt node x
+    real(kind=real64), dimension(:), allocatable :: yv05 !1/2dt node y
+    real(kind=real64), dimension(:), allocatable :: pre05 !1/2dt pressures
+    real(kind=real64), dimension(:), allocatable :: rho05 !1/2dt density
+    real(kind=real64), dimension(:), allocatable :: en05 !1/2dt energy
+    real(kind=real64), dimension(:), allocatable :: volel05 !1/2dt volume
+    real(kind=real64), dimension(:), allocatable :: divint !int divergence v
+    real(kind=real64), dimension(:), allocatable :: divvel !int divergence v
+    real(kind=real64), dimension(:), allocatable :: dxtb,dxlr
+    real(kind=real64), dimension(:), allocatable :: dudxt,dudxb,dudxl,dudxr
+    real(kind=real64), dimension(:), allocatable :: phib, phit, phil, phir
 
-        ! used in momentum and hourgl
-        real(kind=real64), dimension(:), allocatable ::forcenodx !force mass x
-        real(kind=real64), dimension(:), allocatable ::forcenody !force mass y
+    ! used in momentum and hourgl
+    real(kind=real64), dimension(:), allocatable ::forcenodx !force mass x
+    real(kind=real64), dimension(:), allocatable ::forcenody !force mass y
 
-        !fem
-        real(kind=real64), dimension(:,:), allocatable ::nint
-        real(kind=real64), dimension(:,:), allocatable ::elwtc
-        real(kind=real64), dimension(:,:), allocatable ::dndx
-        real(kind=real64), dimension(:,:), allocatable ::dndy
-        real(kind=real64), dimension(:,:), allocatable ::pdndx
-        real(kind=real64), dimension(:,:), allocatable ::pdndy
-    end type
+    !fem
+    real(kind=real64), dimension(:,:), allocatable ::nint
+    real(kind=real64), dimension(:,:), allocatable ::elwtc
+    real(kind=real64), dimension(:,:), allocatable ::dndx
+    real(kind=real64), dimension(:,:), allocatable ::dndy
+    real(kind=real64), dimension(:,:), allocatable ::pdndx
+    real(kind=real64), dimension(:,:), allocatable ::pdndy
+end type
 end module
-
-
-module mesh_data
-USE GlobalConstants
-!     .. module scalars ..
-integer, public    :: nreg
-integer, public    :: nel    !max no. elements
-integer, public    :: nnod  !max no. nodes
-
-! "logicals" - actually integers
-integer, public, allocatable :: znodbound(:)
-
-!       ..arrays..
-integer, dimension(:,:), public, allocatable :: nodelist !element-node array
-real(kind=real64), public, allocatable :: xv(:) ! nodal x points node order
-real(kind=real64), public, allocatable :: yv(:) ! nodal y points node order
-real(kind=real64), public, allocatable ::pre(:) !element pressures
-real(kind=real64), public, allocatable ::rho(:)!element density
-real(kind=real64), public, allocatable ::en(:)!element energy
-real(kind=real64), public, allocatable ::cc(:) !element sound speed
-real(kind=real64), public, allocatable ::qq(:) !element artificial viscosity
-real(kind=real64), public, allocatable ::massel(:) !element mass
-real(kind=real64), public, allocatable ::volel(:) !element volume
-real(kind=real64), public, allocatable ::volelold(:) !element old vol
-real(kind=real64), public, allocatable ::area(:) !element area
-real(kind=real64),dimension(:),public, allocatable ::uv !node x velocity
-real(kind=real64),dimension(:),public, allocatable ::vv!node y velocity
-
-real(kind=real64), public, allocatable ::uvold(:) !old x velocity
-real(kind=real64), public, allocatable ::vvold(:) !old y velocity
-real(kind=real64), public, allocatable ::uvbar(:) !av x velocity
-real(kind=real64), public, allocatable ::vvbar(:) !av y velocity
-real(kind=real64), public, allocatable ::xv05(:) !1/2dt node x
-real(kind=real64), public, allocatable ::yv05(:) !1/2dt node y
-real(kind=real64), public, allocatable ::pre05(:) !1/2dt pressures
-real(kind=real64), public, allocatable ::rho05(:) !1/2dt density
-real(kind=real64), public, allocatable ::en05(:)!1/2dt energy
-real(kind=real64), public, allocatable ::volel05(:) !1/2dt volume
-real(kind=real64), public, allocatable ::divint(:) !int divergence v
-real(kind=real64), public, allocatable ::divvel(:) !int divergence v
-real(kind=real64), public, allocatable ::dxtb(:),dxlr(:)
-real(kind=real64), public,allocatable ::dudxt(:),dudxb(:),dudxl(:),dudxr(:)
-real(kind=real64), public,allocatable ::phib(:), phit(:), phil(:), phir(:)
-
-! used in momentum and hourgl
-real(kind=real64), public, allocatable ::forcenodx(:) !force mass x
-real(kind=real64), public, allocatable ::forcenody(:) !force mass y
-
-!fem
-real(kind=real64), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::nint(:,:)
-real(kind=real64), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::elwtc(:,:)
-real(kind=real64), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::dndx(:,:)
-real(kind=real64), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::dndy(:,:)
-real(kind=real64), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::pdndx(:,:)
-real(kind=real64), DIMENSION(:,:),PUBLIC, ALLOCATABLE ::pdndy(:,:)
-end module mesh_data
 
 
 module cutoffs
