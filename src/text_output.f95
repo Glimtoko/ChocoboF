@@ -3,8 +3,9 @@ use iso_fortran_env, only: int32, real64
 implicit none
 
 contains
-subroutine output(stepcnt, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv, volel, prout)
+subroutine output(problemname, stepcnt, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv, volel, prout)
     implicit none
+    character(len=*), intent(in) :: problemname
     integer(kind=int32), intent(in) :: stepcnt
     integer(kind=int32), intent(in) :: nel, nnod
     integer(kind=int32), dimension(:,:), intent(in) ::nodelist
@@ -16,14 +17,20 @@ subroutine output(stepcnt, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, 
     integer(kind=int32) :: iel, inod
     integer(kind=int32) :: unitnum, unitnum2
 
-    character(len=32) :: pressure_f = "results/mypre_no"
-    character(len=32) :: velocity_f = "results/myvel_no"
-    character(len=32) :: coord_f = "results/myx_no"
-    character(len=32) :: nodelist_f = "results/nodelist_no"
-    character(len=32) :: volume_f = "results/vol_no"
+    character(len=40) :: pressure_f
+    character(len=40) :: velocity_f
+    character(len=40) :: coord_f
+    character(len=40) :: nodelist_f
+    character(len=40) :: volume_f
     character(len=4) :: ext = ".txt"
 
     character(len=3) :: filenumber
+
+    pressure_f = trim(problemname)//"/results/mypre_no"
+    velocity_f = trim(problemname)//"/results/myvel_no"
+    coord_f = trim(problemname)//"/results/myx_no"
+    nodelist_f = trim(problemname)//"/results/nodelist_no"
+    volume_f = trim(problemname)//"/results/vol_no"
 
     ! Generate the digits of the file number
     write(filenumber,"(I3.3)") prout

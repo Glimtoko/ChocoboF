@@ -6,6 +6,7 @@ use fileunits
 use memory_management
 use mesh_mod
 
+use mesh_reader
 use sod_init
 use lagrangian_hydro
 use core_input
@@ -18,7 +19,7 @@ real(kind=real64) :: ctime0, ctime
 real(kind=real64) :: totalenergy,totalke,totalie
 integer(kind=int32) :: dtcontrol
 
-integer(kind=int32) :: iel
+integer(kind=int32) :: iel, mat
 
 REAL(kind=real64) :: time
 INTEGER(kind=int32) :: prout, stepno
@@ -26,14 +27,35 @@ REAL(kind=real64) :: dt, dt05
 
 integer(kind=int32) :: lastsilo
 
+character(len=15) :: problemname
+logical :: use_spherical_sod
+integer(kind=int32) :: status
+
 type(MeshT) :: mesh
 
+! Get the problem name from the command line
+use_spherical_sod = .false.
+call get_command_argument(number=1, value=problemname, status=status)
+
+if (status > 0) then
+    use_spherical_sod = .true.
+elseif (status < 0) then
+    print *, "Error: Invalid problem name (probably > 15 characters)"
+    stop 99
+end if
 
 ! Open input file
 open(unit=control, file='param.dat')
 
 ! Get mesh size
-call geominit(mesh%nel, mesh%nnod, mesh%nreg)
+if (use_spherical_sod) then
+    call sod_get_mesh_size(mesh%nel, mesh%nnod, mesh%nreg)
+else
+    call get_mesh_size(problemname, mesh%nel, mesh%nnod, mesh%nreg)
+end if
+
+! For now, assume # materials = # regions
+mesh%nmat = mesh%nreg
 
 
 ! Initialise scalars, vectors, matrices
@@ -43,7 +65,12 @@ call set_data(mesh%xv05, mesh%nnod)
 call set_data(mesh%yv05, mesh%nnod)
 
 call set_data(mesh%nodelist, 4, mesh%nel)
+call set_data(mesh%region, mesh%nel)
+call set_data(mesh%material, mesh%nel)
 call set_data(mesh%znodbound, mesh%nnod)
+call set_data(mesh%regiontocell, 2, mesh%nreg)
+
+call set_data(mesh%gamma, mesh%nmat)
 
 call set_data(mesh%pre, mesh%nel)
 call set_data(mesh%rho, mesh%nel)
@@ -79,14 +106,26 @@ call set_data(mesh%pdndx, 4, mesh%nel)
 call set_data(mesh%pdndy, 4, mesh%nel)
 
 ! Generate mesh geometry
-call geomcalc(mesh%nreg, mesh%nodelist, mesh%znodbound, mesh%xv, mesh%yv)
+if (use_spherical_sod) then
+    call sod_generate_mesh(mesh%nreg, mesh%nodelist, mesh%znodbound, mesh%xv, mesh%yv)
+    mesh%region = 1
+    mesh%material = 1
+else
+    call generate_mesh(problemname, mesh%nodelist, mesh%znodbound, mesh%region, mesh%material, mesh%regiontocell,mesh%xv, mesh%yv)
+end if
+
 
 ! Read user input
 read(control, nml=tinp)
 write(*, nml=tinp)
 
 ! Initialise spherical sod problem
-call init(mesh%nel, mesh%nodelist, mesh%xv, mesh%yv, mesh%pre, mesh%rho, mesh%uv, mesh%vv)
+if (use_spherical_sod) then
+    call sod_initial_conditions(mesh%nel, mesh%nodelist, mesh%xv, mesh%yv, mesh%pre, mesh%rho, mesh%uv, mesh%vv)
+    mesh%gamma(1) = gamma
+else
+    call initial_conditions(problemname, mesh%nel, mesh%nmat, mesh%material, mesh%pre, mesh%rho, mesh%gamma)
+end if
 
 ! Calculate element volume and mass
 call calculate_volume(mesh%xv, mesh%yv, mesh%nodelist, mesh%nel, mesh%volel, mesh%area)
@@ -94,7 +133,8 @@ call calculate_mass(mesh%volel, mesh%rho, mesh%nel, mesh%massel)
 
 
 do iel = 1, mesh%nel
-    mesh%en(iel) = mesh%pre(iel)/((gamma - 1.0_real64)*mesh%rho(iel))
+    mat = mesh%material(iel)
+    mesh%en(iel) = mesh%pre(iel)/((mesh%gamma(mat) - 1.0_real64)*mesh%rho(iel))
 end do
 
 call calculate_total_energy( &
@@ -129,7 +169,7 @@ do while (time <= tf)
     call caluclate_div_v(mesh%uv, mesh%vv, mesh%pdndx, mesh%pdndy, mesh%nodelist, mesh%nel, mesh%divvel)
 
     !calculate element sound speed
-    call calculate_soundspeed(mesh%pre, mesh%rho, gamma, mesh%nel, mesh%cc)
+    call calculate_soundspeed(mesh%pre, mesh%rho, mesh%material, mesh%gamma, mesh%nel, mesh%cc)
 
     ! calc element artificial viscosity
     call calculate_q(mesh%rho, mesh%cc, mesh%divvel, mesh%area, cq, cl, mesh%nel, mesh%qq)
@@ -166,7 +206,7 @@ do while (time <= tf)
     call calculate_energy(dt05, mesh%pre, mesh%qq, mesh%massel, mesh%en, mesh%divint, mesh%nel, mesh%en05)
 
     ! calculate 1/2 time step mesh%pressure using eos
-    call perfect_gas(mesh%en05, mesh%rho05, gamma, mesh%nel, mesh%pre05)
+    call perfect_gas(mesh%en05, mesh%rho05, mesh%material, mesh%gamma, mesh%nel, mesh%pre05)
 
     ! momentum equation end timestep
     mesh%uvold=mesh%uv     !store old velocity values
@@ -201,7 +241,7 @@ do while (time <= tf)
     call calculate_energy(dt, mesh%pre05, mesh%qq, mesh%massel, mesh%en, mesh%divint, mesh%nel, mesh%en)
 
     ! calculate full time step mesh%pressure using eos
-    call perfect_gas(mesh%en, mesh%rho, gamma, mesh%nel, mesh%pre)
+    call perfect_gas(mesh%en, mesh%rho, mesh%material, mesh%gamma, mesh%nel, mesh%pre)
 
     if ((time - lastsilo) >= dtsilo) then
         write(*,'("SILO Output file created at time = ",f7.5)') time
@@ -216,7 +256,7 @@ do while (time <= tf)
     end if
 
     if (time >= 0.20) then
-        call output(stepcnt, mesh%nel, mesh%nnod, mesh%nodelist, time, stepno, &
+        call output(problemname, stepcnt, mesh%nel, mesh%nnod, mesh%nodelist, time, stepno, &
             mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv, mesh%volel, prout)
     endif
     stepno = stepno + 1

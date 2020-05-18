@@ -20,7 +20,7 @@ integer(kind=int32), private, allocatable :: maxel(:) ! mx element for each regi
 
 contains
 
-subroutine geominit(nel, nnod, nreg)
+subroutine sod_get_mesh_size(nel, nnod, nreg)
     use fileunits
     ! set up variables, allocate, set g coeffs, error coeffs
     implicit none
@@ -89,11 +89,11 @@ subroutine geominit(nel, nnod, nreg)
     open (unit=27, file='results/toten.txt')
     return
 
-END SUBROUTINE geominit
+END SUBROUTINE sod_get_mesh_size
 
 
 ! ===================================================================
-subroutine geomcalc(nreg, nodelist, znodbound, xv, yv)
+subroutine sod_generate_mesh(nreg, nodelist, znodbound, xv, yv)
 
     ! calculates x array in terms of nodes
     implicit none
@@ -206,10 +206,10 @@ subroutine geomcalc(nreg, nodelist, znodbound, xv, yv)
             end do
         end do
     end do
-end subroutine geomcalc
+end subroutine sod_generate_mesh
 
 
-subroutine init(nel, nodelist, xv, yv, pre, rho, uv, vv)
+subroutine sod_initial_conditions(nel, nodelist, xv, yv, pre, rho, uv, vv)
 
     implicit none
     integer(kind=int32), intent(in) :: nel
@@ -241,7 +241,7 @@ subroutine init(nel, nodelist, xv, yv, pre, rho, uv, vv)
     end do
 
 
-end subroutine init
+end subroutine sod_initial_conditions
 
 
 end module

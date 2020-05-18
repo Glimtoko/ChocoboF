@@ -9,6 +9,7 @@ all_objects =  \
 	lagstep_fi.o \
 	write_tio.o \
 	write_silo.o \
+	mesh_reader.o \
 	sod.o \
 	prog.o
 
@@ -33,7 +34,7 @@ clean:
 
 
 # Dependencies
-prog.o: data.o memory_manipulation.o sod.o lagstep_fi.o text_output.o
+prog.o: data.o memory_manipulation.o mesh_reader.o sod.o lagstep_fi.o text_output.o
 
 sod.o: data.o	# For input and file unit
 

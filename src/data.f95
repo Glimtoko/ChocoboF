@@ -4,12 +4,19 @@ type :: MeshT
     integer(kind=int32) :: nel  ! Number of cells
     integer(kind=int32) :: nnod ! Number of nodes
     integer(kind=int32) :: nreg ! Number of regions
+    integer(kind=int32) :: nmat ! Number of materials
 
     ! "logicals" - actually integers
     integer(kind=int32), allocatable :: znodbound(:)
 
     !       ..arrays..
     integer(kind=int32), dimension(:,:), allocatable :: nodelist !element-node array
+    integer(kind=int32), dimension(:), allocatable :: region
+    integer(kind=int32), dimension(:), allocatable :: material
+    integer(kind=int32), dimension(:,:), allocatable ::regiontocell
+
+    real(kind=real64), dimension(:), allocatable :: gamma
+
     real(kind=real64), dimension(:), allocatable :: xv ! nodal x points node order
     real(kind=real64), dimension(:), allocatable :: yv ! nodal y points node order
     real(kind=real64), dimension(:), allocatable :: pre !element pressures

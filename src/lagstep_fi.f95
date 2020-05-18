@@ -162,20 +162,22 @@ subroutine caluclate_div_v(u, v, pdndx, pdndy, nodelist, nel, divvel)
 end subroutine caluclate_div_v
 
 
-subroutine calculate_soundspeed(pressure, rho, gamma, nel, cc)
+subroutine calculate_soundspeed(pressure, rho, material, gamma, nel, cc)
     !calculate element sound speed
     ! ideal gas equation gamma is defined as parameter at init
     implicit none
     real(kind=real64), dimension(:), intent(in) :: pressure, rho
-    real(kind=real64), intent(in) :: gamma
+    integer(kind=int32), dimension(:), intent(in) :: material
+    real(kind=real64), dimension(:), intent(in) :: gamma
     integer(kind=int32) :: nel
 
     real(kind=real64), dimension(:), intent(out) :: cc
 
-    integer(kind=int32) :: iel
+    integer(kind=int32) :: iel, mat
 
     do iel=1,nel
-        cc(iel)=sqrt(gamma*pressure(iel)/rho(iel))
+        mat = material(iel)
+        cc(iel)=sqrt(gamma(mat)*pressure(iel)/rho(iel))
     end do
 
 end subroutine calculate_soundspeed
@@ -367,18 +369,20 @@ subroutine calculate_energy(dt, press, visc, mass, ener, intdiv, nel, enout)
 end subroutine calculate_energy
 
 
-subroutine perfect_gas(energy, rho, gamma, nel, pressure)
+subroutine perfect_gas(energy, rho, material, gamma, nel, pressure)
     implicit none
     real(kind=real64), dimension(:), intent(in) ::  energy, rho
-    real(kind=real64), intent(in) :: gamma
+    integer(kind=int32), dimension(:), intent(in) :: material
+    real(kind=real64), intent(in), dimension(:) :: gamma
     integer(kind=int32), intent(in) :: nel
 
     real(kind=real64), dimension(:), intent(out) :: pressure
 
-    integer(kind=int32) :: iel
+    integer(kind=int32) :: iel, mat
 
     do iel=1,nel
-        pressure(iel) = (gamma - 1.0_real64)*rho(iel)*energy(iel)
+        mat = material(iel)
+        pressure(iel) = (gamma(mat) - 1.0_real64)*rho(iel)*energy(iel)
     end do
 end subroutine perfect_gas
 
