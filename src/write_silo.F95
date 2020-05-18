@@ -9,6 +9,7 @@ include "silo_f9x.inc"
 integer(kind=int32), save :: silo_count = 0
 
 contains
+#ifdef SILO
 subroutine write_silo_file(state, name, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv)
 ! Arguments
 integer(kind=int32), intent(in) :: state
@@ -86,5 +87,19 @@ status = dbputuv1(dbID, "Y_Velocity", 10, "Mesh", 4, vv, nnod, 0, 0, DB_DOUBLE, 
 status = dbclose(dbID)
 
 end subroutine
+#else
+subroutine write_silo_file(state, name, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv)
+! Arguments
+integer(kind=int32), intent(in) :: state
+character(len=*), intent(in) :: name
+integer(kind=int32), intent(in) :: nel, nnod
+integer(kind=int32), dimension(:,:), intent(in) ::nodelist
+real(kind=real64), intent(in) :: time
+integer(kind=int32), intent(in) :: stepno
+real(kind=real64), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv
 
+return
+
+end subroutine
+#endif
 end module

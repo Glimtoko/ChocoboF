@@ -9,6 +9,7 @@ implicit none
 integer, save :: tio_count = 0
 
 contains
+#ifdef TIO
 subroutine write_tio_file(state, name, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv)
 ! Arguments
 integer(kind=int32), intent(in) :: state
@@ -254,5 +255,18 @@ status = TIO_Close_Quant_f(fileID, quantID)
 end subroutine
 
 end subroutine
+#else
+subroutine write_tio_file(state, name, nel, nnod, nodelist, time, stepno, xv, yv, rho, pre, en, uv, vv)
+! Arguments
+integer(kind=int32), intent(in) :: state
+character(len=*), intent(in) :: name
+integer(kind=int32), intent(in) :: nel, nnod
+integer(kind=int32), dimension(:,:), intent(in) ::nodelist
+real(kind=real64), intent(in) :: time
+integer(kind=int32), intent(in) :: stepno
+real(kind=real64), dimension(:), intent(in) :: xv, yv, rho, pre, en, uv, vv
 
+return
+end subroutine
+#endif
 end module
