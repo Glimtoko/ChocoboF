@@ -43,8 +43,6 @@ write (filename, "(A6,I4.4,A5)") name, silo_count, ".silo"
 ! Create a silo file
 status = dbcreate(filename, len(filename), DB_CLOBBER, DB_LOCAL, "", 0, DB_HDF5, dbID)
 
-print *, dbID
-
 ! Create a zone list
 k = 1
 do i = 1, nel

@@ -334,7 +334,7 @@ subroutine calculate_int_divv(zintdivvol, dt, vol, volold, u, v, dndx, dndy, nod
     real(kind=real64) :: eterm
 
     if (zintdivvol == 0) then
-        intdiv=0.0_real64
+        intdiv = 0.0_real64
         do iel=1, nel
             do j=1, 4
                 eterm = u(nodelist(j,iel))*dndx(j,iel)         &
@@ -563,20 +563,15 @@ subroutine momentum_calculation( &
     allocate(forcenodx(nnod))
     allocate(forcenody(nnod))
 
-    massnod=0.0_real64
-    forcenodx=0.0_real64
-    forcenody=0.0_real64
-    do inod=1,nnod
-        do iel=1,nel
-            do j=1,4
-                ! this will calculate fine cells contrib to
-                !disjoint nodes aswell
-                if (nodelist(j,iel) == inod) then
-                    massnod(inod) = massnod(inod) + rho(iel)*nint(j,iel)
-                    forcenodx(inod) = forcenodx(inod) + (pressure(iel)+q(iel))*dndx(j,iel)
-                    forcenody(inod) = forcenody(inod) + (pressure(iel)+q(iel))*dndy(j,iel)
-                end if
-            end do
+    massnod = 0.0_real64
+    forcenodx = 0.0_real64
+    forcenody = 0.0_real64
+    do iel=1,nel
+        do j=1,4
+            inod = nodelist(j,iel)
+            massnod(inod) = massnod(inod) + rho(iel)*nint(j,iel)
+            forcenodx(inod) = forcenodx(inod) + (pressure(iel)+q(iel))*dndx(j,iel)
+            forcenody(inod) = forcenody(inod) + (pressure(iel)+q(iel))*dndy(j,iel)
         end do
     end do
 
@@ -589,7 +584,7 @@ subroutine momentum_calculation( &
 
     end if
 
-    do inod=1,nnod
+    do inod=1, nnod
         uout(inod)=u(inod)+dt*forcenodx(inod)/massnod(inod)
         vout(inod)=v(inod)+dt*forcenody(inod)/massnod(inod)
 

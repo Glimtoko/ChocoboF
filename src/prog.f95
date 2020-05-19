@@ -28,6 +28,7 @@ REAL(kind=real64) :: dt, dt05
 integer(kind=int32) :: lastsilo
 
 character(len=15) :: problemname
+character(len=:), allocatable :: inputf
 logical :: use_spherical_sod
 integer(kind=int32) :: status
 
@@ -39,13 +40,17 @@ call get_command_argument(number=1, value=problemname, status=status)
 
 if (status > 0) then
     use_spherical_sod = .true.
+    inputf = "param.dat"
+    problemname = "./"
 elseif (status < 0) then
     print *, "Error: Invalid problem name (probably > 15 characters)"
     stop 99
+else
+    inputf = trim(problemname) // "/param.dat"
 end if
 
 ! Open input file
-open(unit=control, file='param.dat')
+open(unit=control, file=inputf)
 
 ! Get mesh size
 if (use_spherical_sod) then
@@ -156,7 +161,6 @@ prout = 0
 time = t0
 lastsilo = t0
 dt = dtinit
-stepcnt = 0
 stepno = 1
 call CPU_TIME(ctime0)
 do while (time <= tf)
@@ -255,12 +259,12 @@ do while (time <= tf)
         end if
     end if
 
-    if (time >= 0.20) then
+    if (time >= 0.20 .or. stepcnt > 0) then
         call output(problemname, stepcnt, mesh%nel, mesh%nnod, mesh%nodelist, time, stepno, &
             mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv, mesh%volel, prout)
     endif
     stepno = stepno + 1
-    if (stepno == stepcnt .and. stepcnt > 0) stop
+    if (stepno >= stepcnt .and. stepcnt > 0) exit
 end do
 
 ! Time taken

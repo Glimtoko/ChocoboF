@@ -1,6 +1,6 @@
 # Fortran compiler and base flags
 FC := gfortran
-FFLAGS := -O3 -Wunused
+FFLAGS := -O3
 
 # Object list
 all_objects =  \
@@ -13,6 +13,9 @@ all_objects =  \
 	mesh_reader.o \
 	sod.o \
 	prog.o
+
+# Installation directory
+INSTALL_DIR := /prod/ChocoboF/bin/
 
 # Expected library locations
 PROD := /usr/local/prod
@@ -79,9 +82,11 @@ $(info ChocoboF Environment::)
 $(info Fortran compiler: $(FC))
 $(info Base compiler flags: $(FFLAGS))
 $(info Preprocessor flags:$(PREPRO))
+$(info )
 
 .SUFFIXES:
 .SUFFIXES: .o .f95 .F95
+.PHONY: clean install
 
 .f95.o:
 	$(FC) $(FFLAGS) $(INCLUDES) $< -c
@@ -96,6 +101,11 @@ clean:
 	-rm chocobof
 	-rm *.o
 	-rm *.mod
+
+install: chocobof
+	@echo Installing to $(INSTALL_DIR)
+	cp chocobof $(INSTALL_DIR)
+	chmod +x $(INSTALL_DIR)/chocobof
 
 
 # Dependencies

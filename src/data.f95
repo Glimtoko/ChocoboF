@@ -121,7 +121,7 @@ integer(kind=int32) :: h5type
 logical :: tioonefile
 
 ! Maximum number of timesteps - used for debugging
-integer(kind=int32) :: stepcnt
+integer(kind=int32) :: stepcnt = 0
 
 namelist /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
         zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type,tioonefile
