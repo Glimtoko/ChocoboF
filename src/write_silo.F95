@@ -4,7 +4,9 @@ use iso_fortran_env, only: int32, real64
 
 implicit none
 
+#ifdef SILO
 include "silo_f9x.inc"
+#endif
 
 integer(kind=int32), save :: silo_count = 0
 

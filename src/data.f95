@@ -123,7 +123,12 @@ logical :: tioonefile
 ! Maximum number of timesteps - used for debugging
 integer(kind=int32) :: stepcnt = 0
 
+! Output time
+real(kind=real64) :: tout = 0.2
+logical :: one_output = .false.
+
 namelist /tinp/t0,tf,gamma,cq,cl,maxallstep,dtinit,dtoption,growth,zaxis,  &
-        zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type,tioonefile
+        zintdivvol,avtype,zantihg,hgregtyp,kappareg,stepcnt,dtsilo,h5type, &
+        tioonefile, tout, one_output
 
 end module core_input

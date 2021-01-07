@@ -550,16 +550,16 @@ subroutine momentum_calculation( &
     real(kind=real64), dimension(:), intent(out) :: uout, vout
 
     real(kind=real64), allocatable :: massnod(:) !node mass
-    real(kind=real64), allocatable :: massj(:) !node mass el
-    real(kind=real64), allocatable :: forcejx(:) !force mass el
-    real(kind=real64), allocatable :: forcejy(:) !force mass el
+!     real(kind=real64), allocatable :: massj(:) !node mass el
+!     real(kind=real64), allocatable :: forcejx(:) !force mass el
+!     real(kind=real64), allocatable :: forcejy(:) !force mass el
     real(kind=real64), allocatable :: forcenodx(:) !force mass x
     real(kind=real64), allocatable :: forcenody(:) !force mass y
 
     integer(kind=int32) :: iel, inod, j
 
-    allocate(massnod(1:nnod), massj(1:nnod), forcejx(1:nnod))
-    allocate(forcejy(1:nnod))
+    allocate(massnod(1:nnod))!, massj(1:nnod), forcejx(1:nnod))
+!     allocate(forcejy(1:nnod))
     allocate(forcenodx(nnod))
     allocate(forcenody(nnod))
 

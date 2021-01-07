@@ -19,7 +19,7 @@ real(kind=real64) :: ctime0, ctime
 real(kind=real64) :: totalenergy,totalke,totalie
 integer(kind=int32) :: dtcontrol
 
-integer(kind=int32) :: iel, mat
+integer(kind=int32) :: iel, mat, nout
 
 REAL(kind=real64) :: time
 INTEGER(kind=int32) :: prout, stepno
@@ -259,9 +259,12 @@ do while (time <= tf)
         end if
     end if
 
-    if (time >= 0.20 .or. stepcnt > 0) then
-        call output(problemname, stepcnt, mesh%nel, mesh%nnod, mesh%nodelist, time, stepno, &
-            mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv, mesh%volel, prout)
+    if (time >= tout .or. stepcnt > 0) then
+        if (nout == 0 .or. .not. one_output) then
+            call output(problemname, stepcnt, mesh%nel, mesh%nnod, mesh%nodelist, time, stepno, &
+                mesh%xv, mesh%yv, mesh%rho, mesh%pre, mesh%en, mesh%uv, mesh%vv, mesh%volel, prout)
+            nout = nout + 1
+        end if
     endif
     stepno = stepno + 1
     if (stepno >= stepcnt .and. stepcnt > 0) exit

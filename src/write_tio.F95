@@ -3,7 +3,9 @@ use iso_fortran_env, only: int32, real64
 
 use core_input
 
+#ifdef TIO
 use typhonio
+#endif
 implicit none
 
 integer, save :: tio_count = 0

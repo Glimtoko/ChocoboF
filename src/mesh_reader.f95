@@ -125,7 +125,7 @@ do i = 1, nreg
         stop 89
     end if
     regiontocell(1,i) = d2
-    regiontocell(2,i) = d2
+    regiontocell(2,i) = d3
 end do
 
 end subroutine
