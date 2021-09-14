@@ -14,16 +14,19 @@ use text_output
 use write_silo
 use write_tio
 
+use iris
+use arcus
+
 implicit none
 real(kind=real64) :: ctime0, ctime
 real(kind=real64) :: totalenergy,totalke,totalie
-integer(kind=int32) :: dtcontrol
+integer(kind=int32), target :: dtcontrol
 
 integer(kind=int32) :: iel, mat, nout
 
-REAL(kind=real64) :: time
-INTEGER(kind=int32) :: prout, stepno
-REAL(kind=real64) :: dt, dt05
+REAL(kind=real64), target :: time
+INTEGER(kind=int32), target :: prout, stepno
+REAL(kind=real64), target :: dt, dt05
 
 integer(kind=int32) :: lastsilo
 
@@ -32,7 +35,10 @@ character(len=:), allocatable :: inputf
 logical :: use_spherical_sod
 integer(kind=int32) :: status
 
-type(MeshT) :: mesh
+type(MeshT), target :: mesh
+
+type(ArcusRegistry) :: the_registry
+type(IrisLogger) :: the_logger
 
 ! Get the problem name from the command line
 use_spherical_sod = .false.
@@ -110,6 +116,27 @@ call set_data(mesh%elwtc, 4, mesh%nel)
 call set_data(mesh%pdndx, 4, mesh%nel)
 call set_data(mesh%pdndy, 4, mesh%nel)
 
+! Set logging registry
+the_registry = arcus_create_registry_f(mesh%region, mesh%material, mesh%nel, mesh%nnod)
+
+! Scalars
+status = arcus_add_scalar_double_f(the_registry, "dt", dt)
+status = arcus_add_scalar_double_f(the_registry, "time", time)
+status = arcus_add_scalar_int_f(the_registry, "step", stepno)
+status = arcus_add_scalar_int_f(the_registry, "control", dtcontrol)
+
+status = arcus_add_scalar_double_f(the_registry, "ctime0", ctime0)
+status = arcus_add_scalar_double_f(the_registry, "ctime", ctime)
+
+! Arrays
+status = arcus_add_quant_f(the_registry, "density", mesh%rho, ARCUS_CENTRE_CELL_F)
+
+! Logger
+the_logger = iris_create_logger_f("Logger", 10)
+status = iris_add_registry_f(the_logger, the_registry)
+status = iris_add_console_appender_f(the_logger, "C %m%n")
+
+
 ! Generate mesh geometry
 if (use_spherical_sod) then
     call sod_generate_mesh(mesh%nreg, mesh%nodelist, mesh%znodbound, mesh%xv, mesh%yv)
@@ -122,7 +149,7 @@ end if
 
 ! Read user input
 read(control, nml=tinp)
-write(*, nml=tinp)
+! write(*, nml=tinp)
 
 ! Initialise spherical sod problem
 if (use_spherical_sod) then
@@ -184,7 +211,12 @@ do while (time <= tf)
         maxallstep, growth, mesh%nel, dt, dtcontrol &
     )
     time = time + dt
-    WRITE(*,"(i4, 2x, f10.7, 2x, f15.12, 2x, i4)") stepno,time,dt, dtcontrol
+!     WRITE(*,"(i4, 2x, f10.7, 2x, f15.12, 2x, i4)") stepno,time,dt, dtcontrol
+    status = iris_log_f( &
+      the_logger, &
+      10, &
+      "Step: @{step}, time: @{time}, dt: @{dt}    Timestep Controlling Element: @{control}" &
+    )
 
     !calculate 1/2 time step nodal positions
     dt05 = 0.5_real64 * dt
@@ -272,7 +304,10 @@ end do
 
 ! Time taken
 call cpu_time(ctime)
-write(*,*)
-write(*,*) 'Time taken = ' , ctime - ctime0, 'seconds'
+    status = iris_log_f( &
+      the_logger, &
+      10, &
+      "Time taken: @{ctime ctime0 -}s" &
+    )
 
 end program ChocoboF

@@ -22,6 +22,8 @@ PROD := /usr/local/prod
 TIO_DIR := $(PROD)/typhonio
 SILO_DIR := $(PROD)/silo-4.10.2-bsd
 HDF5_DIR := $(PROD)/hdf5_oldapi
+IRIS_DIR := /usr/local
+LOG4CXX_DIR := /usr/local
 
 # Include and link directories
 INCLUDES :=
@@ -60,6 +62,32 @@ ifneq ("$(wildcard $(SILO_CHECK))", "")
   NEED_HDF = YES
 else
   $(info SILO Not found)
+endif
+
+IRIS_CHECK := $(IRIS_DIR)/include/arcus.mod
+
+$(info )
+$(info Checking for Iris in $(IRIS_DIR))
+ifneq ("$(wildcard $(IRIS_CHECK))", "")
+  $(info  Iris Found)
+  INCLUDES += -I$(IRIS_DIR)/include
+  LINKS += -L$(IRIS_DIR)/lib -liris_f -liris_c -liris -lstdc++
+  PREPRO += -DIRIS
+else
+  $(info Iris Not found)
+endif
+
+LOG4CXX_CHECK := $(LOG4CXX_DIR)/include/log4cxx
+
+$(info )
+$(info Checking for LOG4CXX in $(LOG4CXX_DIR))
+ifneq ("$(wildcard $(LOG4CXX_CHECK))", "")
+  $(info  LOG4CXX Found)
+  INCLUDES += -I$(LOG4CXX_DIR)/include
+  LINKS += -L$(LOG4CXX_DIR)/lib -llog4cxx
+  PREPRO += -DLOG4CXX
+else
+  $(info LOG4CXX Not found)
 endif
 
 
